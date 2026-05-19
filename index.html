@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#1A8FE3">
 <title>急先锋 · FlushFinder</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://webapi.amap.com/maps?v=2.0&key=ba512535f4f46cbcec76a1398f9ec400"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
 :root{
@@ -68,8 +68,17 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:#fff;font-family:
 .flash-ic i{font-size:20px;color:#FFD700}
 .flash-text h3{font-size:14px;font-weight:700;color:#fff}
 .flash-text p{font-size:10.5px;color:rgba(255,255,255,.8);margin-top:1px}
-#map{flex-shrink:0;height:240px;position:relative;z-index:0}
-.leaflet-container{font-family:'Noto Sans SC',sans-serif}
+#map{flex-shrink:0;height:220px;position:relative;z-index:0;background:#E8F0F8;overflow:hidden}
+#amap-container{width:100%;height:100%}
+#map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#E8F0F8;flex-direction:column;gap:8px;pointer-events:none;z-index:10}
+#map-loading .ml-spin{width:24px;height:24px;border:3px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+#map-loading p{font-size:11px;color:var(--g400)}
+#map-no-loc{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#EFF6FF;z-index:10}
+#map-no-loc i{font-size:36px;color:var(--blue-mid)}
+#map-no-loc p{font-size:13px;color:var(--g500);text-align:center;line-height:1.6;padding:0 30px}
+#map-no-loc button{padding:8px 20px;border-radius:20px;background:var(--blue);color:#fff;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+/* 隐藏高德 logo 水印区域不遮挡内容 */
+.amap-logo,.amap-copyright{opacity:.45!important;transform:scale(.75)!important;transform-origin:bottom left!important}
 .map-fab{position:absolute;z-index:1000;width:38px;height:38px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.12);cursor:pointer;border:none;transition:background .15s}
 .map-fab:active{background:var(--g100)}
 .map-fab i{font-size:18px;color:var(--g700)}
@@ -325,14 +334,9 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:#fff;font-family:
 .ld-line{max-width:310px;padding:0 24px;margin-bottom:24px;font-size:13px;line-height:1.7;color:var(--g500);text-align:center}
 .ld-spin{width:32px;height:32px;border:3px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* MAP PINS */
-.m-pin{display:flex;flex-direction:column;align-items:center;cursor:pointer}
-.m-bubble{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .15s}
-.m-bubble:hover{transform:scale(1.1)}
-.m-tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;margin-top:-1px}
-.m-g .m-bubble{background:var(--green)}.m-g .m-tail{border-top:8px solid var(--green)}
-.m-o .m-bubble{background:var(--orange)}.m-o .m-tail{border-top:8px solid var(--orange)}
-.m-r .m-bubble{background:var(--red)}.m-r .m-tail{border-top:8px solid var(--red)}
+/* 自定义高德标记点 */
+.amap-marker-content{transition:transform .15s}
+.amap-marker-content:active{transform:scale(.9)}
 </style>
 </head>
 <body>
@@ -359,7 +363,15 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:#fff;font-family:
         <div class="flash-text"><h3 id="flash-count">正在定位附近厕所...</h3><p id="flash-sub">点击重新定位</p></div>
         <i class="ti ti-chevron-right" style="color:rgba(255,255,255,.7);margin-left:auto"></i>
       </div>
-      <div id="map"></div>
+      <div id="map">
+        <div id="amap-container"></div>
+        <div id="map-loading"><div class="ml-spin"></div><p>正在定位...</p></div>
+        <div id="map-no-loc">
+          <i class="ti ti-map-pin-off"></i>
+          <p>需要位置权限才能显示附近地图<br>点击下方按钮授权定位</p>
+          <button onclick="locateMe()">📍 允许定位</button>
+        </div>
+      </div>
       <button class="map-fab" id="fab-locate" onclick="locateMe()"><i class="ti ti-current-location"></i></button>
       <button class="map-fab" id="fab-filter" onclick="openModal('modal-filter')"><i class="ti ti-adjustments-horizontal"></i></button>
       <div class="sort-bar">
@@ -692,7 +704,6 @@ html,body{height:100%;height:100dvh;overflow:hidden;background:#fff;font-family:
 
 <div id="toast"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ── DATA ──
 var TOILETS=[
@@ -760,7 +771,52 @@ var FEED=[
    body:'推荐附近宜家餐厅厕所！免费、干净，还有充电插座，简直神仙如厕体验 🙌',imgs:['#D1FADF','#E0F2FE'],loc:'宜家家居（四季店）',likes:89,cmnts:32,liked:false}
 ];
 // ── STATE ──
-var ST={cur:'s-home',hist:[],tab:'s-home',toilet:null,lat:null,lng:null,map:null,uMarker:null,accCircle:null,tMarkers:[],pts:2350,sortMode:'dist',star:0,helpFilter:null,watchId:null};
+var ST={cur:'s-home',hist:[],tab:'s-home',toilet:null,lat:null,lng:null,pts:2350,sortMode:'dist',star:0,helpFilter:null,watchId:null,amap:null,uMarker:null,accCircle:null,tMarkers:[]};
+// ── AMAP ──
+function initAMap(lat,lng,acc){
+  var loading=document.getElementById('map-loading');
+  var noLoc=document.getElementById('map-no-loc');
+  noLoc.style.display='none';
+  if(typeof AMap==='undefined'){
+    loading.style.display='flex';
+    loading.querySelector('p').textContent='地图加载失败，请检查网络';
+    return;
+  }
+  if(ST.amap){
+    ST.amap.setCenter([lng,lat]);
+    if(ST.uMarker)ST.uMarker.setPosition([lng,lat]);
+    if(ST.accCircle&&acc){ST.accCircle.setCenter([lng,lat]);ST.accCircle.setRadius(Math.min(acc,500));}
+    return;
+  }
+  loading.style.display='flex';
+  ST.amap=new AMap.Map('amap-container',{
+    zoom:16,center:[lng,lat],resizeEnable:true,touchZoom:true,
+    mapStyle:'amap://styles/normal',showLabel:true
+  });
+  ST.amap.on('complete',function(){loading.style.display='none';});
+  // 用户位置蓝点
+  var uSvg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#1A8FE3" stroke="#fff" stroke-width="3"/><circle cx="10" cy="10" r="3" fill="#fff"/></svg>';
+  var uIcon=new AMap.Icon({size:new AMap.Size(20,20),image:'data:image/svg+xml;utf8,'+encodeURIComponent(uSvg),imageSize:new AMap.Size(20,20)});
+  ST.uMarker=new AMap.Marker({position:[lng,lat],icon:uIcon,offset:new AMap.Pixel(-10,-10),zIndex:200});
+  ST.amap.add(ST.uMarker);
+  // 精度圆
+  ST.accCircle=new AMap.Circle({center:[lng,lat],radius:acc&&acc<500?acc:60,fillColor:'#1A8FE3',fillOpacity:.1,strokeColor:'#1A8FE3',strokeOpacity:.35,strokeWeight:1.5});
+  ST.amap.add(ST.accCircle);
+}
+function renderAmapMarkers(){
+  if(!ST.amap)return;
+  if(ST.tMarkers.length){ST.amap.remove(ST.tMarkers);ST.tMarkers=[];}
+  TOILETS.forEach(function(t){
+    if(!t.lat||!t.lng)return;
+    var col=t.st==='g'?'#12B76A':t.st==='o'?'#F59E0B':'#EF4444';
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"><path d="M16 1C8.82 1 3 6.82 3 14c0 9.8 13 25 13 25s13-15.2 13-25C29 6.82 23.18 1 16 1z" fill="'+col+'" stroke="#fff" stroke-width="2"/><text x="16" y="19" text-anchor="middle" font-size="13" fill="#fff">🚻</text></svg>';
+    var icon=new AMap.Icon({size:new AMap.Size(32,40),image:'data:image/svg+xml;utf8,'+encodeURIComponent(svg),imageSize:new AMap.Size(32,40)});
+    var m=new AMap.Marker({position:[t.lng,t.lat],icon:icon,offset:new AMap.Pixel(-16,-40),title:t.name,zIndex:100});
+    m.on('click',function(){openDetail(t.id);});
+    ST.amap.add(m);
+    ST.tMarkers.push(m);
+  });
+}
 // ── CLOCK ──
 function tick(){var d=new Date(),h=d.getHours(),m=d.getMinutes();document.getElementById('sb-time').textContent=h+':'+(m<10?'0':'')+m;}
 tick();setInterval(tick,15000);
@@ -789,42 +845,6 @@ function switchTab(id,btn){
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('act'));
   document.querySelectorAll('.tb').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'"))b.classList.add('act');});
 }
-// ── MAP ──
-function initMap(lat,lng,accuracy){
-  if(!ST.map){
-    ST.map=L.map('map',{zoomControl:false,attributionControl:false}).setView([lat,lng],16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(ST.map);
-    // 用户位置标记（蓝点 + 精度圈）
-    var uIco=L.divIcon({html:'<div style="width:16px;height:16px;background:#1A8FE3;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(26,143,227,.25)"></div>',className:'',iconAnchor:[8,8]});
-    ST.uMarker=L.marker([lat,lng],{icon:uIco,zIndexOffset:1000}).addTo(ST.map);
-    if(accuracy&&accuracy<2000){
-      ST.accCircle=L.circle([lat,lng],{radius:accuracy,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
-    }
-  } else {
-    ST.map.setView([lat,lng],ST.map.getZoom());
-    if(ST.uMarker)ST.uMarker.setLatLng([lat,lng]);
-    if(ST.accCircle){ST.map.removeLayer(ST.accCircle);ST.accCircle=null;}
-    if(accuracy&&accuracy<2000){
-      ST.accCircle=L.circle([lat,lng],{radius:accuracy,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
-    }
-  }
-  renderToiletMarkers();
-  ST.map.invalidateSize();
-}
-function renderToiletMarkers(){
-  if(!ST.map)return;
-  ST.tMarkers.forEach(m=>ST.map.removeLayer(m));
-  ST.tMarkers=[];
-  TOILETS.forEach(function(t){
-    if(!t.lat||!t.lng)return;
-    var col=t.st==='g'?'#12B76A':t.st==='o'?'#F59E0B':'#EF4444';
-    var html='<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))">'+
-      '<div style="width:32px;height:32px;background:'+col+';border-radius:50%;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;transition:transform .15s">🚻</div>'+
-      '<div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid '+col+';margin-top:-1px"></div></div>';
-    var ico=L.divIcon({html:html,className:'',iconAnchor:[16,40]});
-    ST.tMarkers.push(L.marker([t.lat,t.lng],{icon:ico}).addTo(ST.map).on('click',()=>openDetail(t.id)));
-  });
-}
 function distBetween(lat1,lng1,lat2,lng2){
   var dx=(lng2-lng1)*111320*Math.cos(lat1*Math.PI/180),dy=(lat2-lat1)*111320;
   return Math.round(Math.sqrt(dx*dx+dy*dy));
@@ -843,61 +863,56 @@ function serviceToilet(el,idx,lat,lng){
     bars:{c:4.2,s:4.1,f:4.0,q:4.3},rvs:[]};
 }
 function loadNearbyToilets(lat,lng){
-  // Overpass QL: 查询 1000m 内的 amenity=toilets
   var q='[out:json][timeout:12];(node["amenity"="toilets"](around:1200,'+lat+','+lng+');way["amenity"="toilets"](around:1200,'+lat+','+lng+');relation["amenity"="toilets"](around:1200,'+lat+','+lng+'););out center tags 30;';
   return fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)})
     .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(data){
       var items=(data.elements||[]).filter(function(x){
-        var hasPos=(x.lat&&x.lon)||(x.center&&x.center.lat&&x.center.lon);
-        return hasPos;
+        return (x.lat&&x.lon)||(x.center&&x.center.lat&&x.center.lon);
       });
-      if(!items.length){toast('地图服务暂无附近数据，已使用本地结果 📍');return false;}
-      var real=items.slice(0,30).map((el,i)=>serviceToilet(el,i,lat,lng));
-      // 合并：真实数据 + 保留 demo 数据（id<100）中未被覆盖的
-      TOILETS=real;
-      renderToiletMarkers();updateUI();
-      toast('已从地图服务加载 '+TOILETS.length+' 个真实厕所 📍');
+      if(!items.length){toast('暂无附近真实数据，显示模拟厕所 📍');return false;}
+      TOILETS=items.slice(0,30).map((el,i)=>serviceToilet(el,i,lat,lng));
+      updateUI();renderAmapMarkers();
+      toast('已加载 '+TOILETS.length+' 个真实厕所 📍');
       return true;
     })
-    .catch(function(e){
-      console.warn('Overpass error:',e);
-      toast('地图服务暂不可用，显示模拟数据');
-      return false;
-    });
+    .catch(function(e){console.warn('Overpass:',e);toast('数据服务不可用，显示模拟数据');return false;});
 }
 function seedDemoToilets(lat,lng){
   var off=[[-0.002,-0.003],[.0015,-.002],[.002,.002],[-.001,.003],[.003,-.001],[-.0025,.0025],[.0028,-.0026],[-.0032,.0012]];
   TOILETS.forEach(function(t,i){t.lat=lat+(off[i]||[0,0])[0];t.lng=lng+(off[i]||[0,0])[1];});
-  refreshDistances(lat,lng);renderToiletMarkers();
+  refreshDistances(lat,lng);
 }
 function locateMe(){
-  if(!navigator.geolocation){toast('浏览器不支持定位');useFallback();return;}
-  toast('正在获取高精度位置 🛰️');
+  if(!navigator.geolocation){
+    toast('浏览器不支持定位');
+    document.getElementById('map-loading').style.display='none';
+    document.getElementById('map-no-loc').style.display='flex';
+    useFallback();return;
+  }
+  toast('正在获取位置 🛰️');
   navigator.geolocation.getCurrentPosition(
     function(pos){
       var lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;
       ST.lat=lat;ST.lng=lng;
-      initMap(lat,lng,acc);
+      initAMap(lat,lng,acc);
       seedDemoToilets(lat,lng);
-      updateUI();
+      updateUI();renderAmapMarkers();
       var accTxt=acc<30?'精度极高（±'+Math.round(acc)+'m）':acc<100?'精度良好（±'+Math.round(acc)+'m）':'精度一般（±'+Math.round(acc)+'m）';
-      toast('定位成功 · '+accTxt+'，正在加载真实厕所...');
+      toast('定位成功 · '+accTxt);
       loadNearbyToilets(lat,lng);
-      // 启动持续追踪（低频，省电）
       if(ST.watchId)navigator.geolocation.clearWatch(ST.watchId);
       ST.watchId=navigator.geolocation.watchPosition(function(p){
-        var la=p.coords.latitude,lo=p.coords.longitude,ac=p.coords.accuracy;
-        ST.lat=la;ST.lng=lo;
-        if(ST.uMarker)ST.uMarker.setLatLng([la,lo]);
-        if(ST.accCircle){ST.map.removeLayer(ST.accCircle);ST.accCircle=null;}
-        if(ac<2000&&ST.map)ST.accCircle=L.circle([la,lo],{radius:ac,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
-        refreshDistances(la,lo);renderList();
+        ST.lat=p.coords.latitude;ST.lng=p.coords.longitude;
+        if(ST.uMarker&&ST.amap){ST.uMarker.setPosition([ST.lng,ST.lat]);}
+        refreshDistances(ST.lat,ST.lng);renderList();
       },{enableHighAccuracy:false,maximumAge:15000,timeout:20000});
     },
     function(err){
-      var msg={1:'位置权限被拒绝',2:'无法获取位置信号',3:'定位超时'}[err.code]||'定位失败';
-      toast(msg+'，使用演示数据');
+      var msg={1:'位置权限被拒绝，请在设置中允许',2:'无法获取位置信号',3:'定位超时'}[err.code]||'定位失败';
+      toast(msg);
+      document.getElementById('map-loading').style.display='none';
+      document.getElementById('map-no-loc').style.display='flex';
       useFallback();
     },
     {timeout:10000,enableHighAccuracy:true,maximumAge:5000}
@@ -905,7 +920,8 @@ function locateMe(){
 }
 function useFallback(){
   var lat=39.9042,lng=116.4074;ST.lat=lat;ST.lng=lng;
-  initMap(lat,lng);seedDemoToilets(lat,lng);updateUI();toast('已使用演示数据（北京中心）');loadNearbyToilets(lat,lng);
+  initAMap(lat,lng,100);seedDemoToilets(lat,lng);updateUI();renderAmapMarkers();
+  toast('演示模式（北京中心）');loadNearbyToilets(lat,lng);
 }
 function updateUI(){
   var avail=TOILETS.filter(t=>t.st!=='r').length;
@@ -954,10 +970,9 @@ function openDetail(id){
   document.getElementById('d-score').textContent=t.score;
   document.getElementById('d-big-score').textContent=t.score;
   document.getElementById('d-cnt').textContent='（'+t.rcnt+'条评价）';
-  // 导航按钮：如有坐标显示距离，否则提示无坐标
-  var hasCoords=t.lat&&t.lng;
-  document.getElementById('d-nav-lbl').textContent=hasCoords?'导航去这里 · '+distFmt(t.dist):'暂无精确坐标';
-  document.querySelector('.d-bar .btn-blue').style.opacity=hasCoords?'1':'0.45';
+  // 导航按钮标签
+  document.getElementById('d-nav-lbl').textContent='导航去这里 · '+distFmt(t.dist);
+  document.querySelector('.d-bar .btn-blue').style.opacity='1';
   document.getElementById('d-chips').innerHTML=t.chips.map(c=>'<span class="chip">'+c+'</span>').join('');
   // 坐标显示
   var coordEl=document.getElementById('d-coord');
@@ -1005,28 +1020,51 @@ function navigateTo(){var t=ST.toilet;if(t)navT(t.id);}
 function navT(id){
   var t=TOILETS.find(x=>x.id===id);if(!t)return;
   ST.toilet=t;
-  // 优先使用厕所真实坐标，否则使用用户位置（不应该用用户坐标作为目标！）
-  var destLat=t.lat,destLng=t.lng;
-  if(!destLat||!destLng){toast('该厕所暂无精确坐标，无法导航 ❌');return;}
-  var ua=navigator.userAgent,url;
+  var ua=navigator.userAgent;
   var name=encodeURIComponent(t.name);
-  if(/iPhone|iPad|iPod/i.test(ua)){
-    // Apple Maps 步行导航
-    url='maps://maps.apple.com/?daddr='+destLat+','+destLng+'&dirflg=w&t=m';
-  } else if(/Android/i.test(ua)){
-    // 优先尝试 geo: URI（支持高德/百度/谷歌地图选择），带查询名称
-    url='geo:'+destLat+','+destLng+'?q='+destLat+','+destLng+'('+name+')';
+  var hasCoords=t.lat&&t.lng&&(Math.abs(t.lat)>0.001||Math.abs(t.lng)>0.001);
+  var url;
+  // 高德地图 URI 方案（iOS/Android 均支持），优先 Android 高德，iOS 也可安装高德
+  if(/Android/i.test(ua)){
+    if(hasCoords)
+      url='androidamap://navi?sourceApplication=急先锋&poiname='+name+'&lat='+t.lat+'&lon='+t.lng+'&dev=0&style=2';
+    else
+      url='androidamap://poi?sourceApplication=急先锋&keywords='+name;
+    // 降级：如果高德未安装，用 Web 高德
+    var fallback='https://uri.amap.com/navigation?to='+( hasCoords?(t.lng+','+t.lat+','+name):(name) )+'&mode=walk&callnative=1&src=急先锋';
+    openWithFallback(url,fallback);
+  } else if(/iPhone|iPad|iPod/i.test(ua)){
+    if(hasCoords)
+      url='iosamap://navi?sourceApplication=急先锋&poiname='+name+'&lat='+t.lat+'&lon='+t.lng+'&dev=0&style=2';
+    else
+      url='iosamap://poi?sourceApplication=急先锋&keywords='+name;
+    var fallback='https://uri.amap.com/navigation?to='+( hasCoords?(t.lng+','+t.lat+','+name):(name) )+'&mode=walk&callnative=1&src=急先锋';
+    openWithFallback(url,fallback);
   } else {
-    // 桌面浏览器 → Google Maps
-    url='https://www.google.com/maps/dir/?api=1&destination='+destLat+','+destLng+'&travelmode=walking&destination_place_name='+name;
+    // 桌面：高德 Web
+    if(hasCoords)
+      url='https://uri.amap.com/navigation?to='+t.lng+','+t.lat+','+name+'&mode=walk&src=急先锋';
+    else
+      url='https://www.amap.com/search?query='+name;
+    window.open(url,'_blank');
+    toast('正在打开高德地图导航 🧭');
   }
-  window.open(url,'_blank');
-  toast('正在打开导航 🧭 → '+t.name);
+}
+function openWithFallback(nativeUrl,webUrl){
+  // 尝试唤起 App，300ms 后如页面仍在则降级 Web
+  var t=Date.now();
+  var iframe=document.createElement('iframe');
+  iframe.style.display='none';iframe.src=nativeUrl;document.body.appendChild(iframe);
+  setTimeout(function(){
+    if(Date.now()-t<800)window.open(webUrl,'_blank');
+    document.body.removeChild(iframe);
+  },400);
+  toast('正在打开高德地图导航 🧭');
 }
 function copyCoord(){var t=ST.toilet;if(!t||!t.lat)return;var s=t.lat.toFixed(6)+','+t.lng.toFixed(6);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>toast('坐标已复制 📋'));else toast(s);}
 function sosNavigate(){
-  var s=(ST.helpFilter&&ST.helpFilter.fn?[...TOILETS].filter(ST.helpFilter.fn):[...TOILETS]).filter(t=>t.st!=='r'&&t.lat&&t.lng).sort((a,b)=>a.dist-b.dist);
-  if(s.length)navT(s[0].id);else toast('未找到可导航的厕所（缺少坐标）');
+  var s=(ST.helpFilter&&ST.helpFilter.fn?[...TOILETS].filter(ST.helpFilter.fn):[...TOILETS]).filter(t=>t.st!=='r').sort((a,b)=>a.dist-b.dist);
+  if(s.length)navT(s[0].id);else toast('未找到可用厕所');
 }
 // ── SHARE ──
 function shareToilet(){
