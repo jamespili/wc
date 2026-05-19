@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1A8FE3">
+<title>急先锋 · FlushFinder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+:root{
+  --blue:#1A8FE3;--blue-d:#0F6BC4;--blue-light:#E8F4FD;--blue-mid:#B5D4F4;
+  --green:#12B76A;--green-d:#0A8C50;--green-light:#D1FADF;
+  --orange:#F59E0B;--orange-light:#FEF3C7;
+  --red:#EF4444;--red-light:#FEE2E2;
+  --purple:#7C3AED;--purple-light:#EDE9FE;
+  --g50:#F8FAFC;--g100:#F1F5F9;--g200:#E2E8F0;--g300:#CBD5E1;
+  --g400:#94A3B8;--g500:#64748B;--g700:#334155;--text:#0F172A;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;height:100dvh;overflow:hidden;background:#fff;font-family:'Noto Sans SC',sans-serif;color:var(--text);user-select:none}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;background:#fff;max-width:430px;margin:0 auto;box-shadow:0 0 40px rgba(0,0,0,.15)}
+#statusbar{height:calc(var(--safe-top) + 44px);background:#fff;display:flex;align-items:flex-end;justify-content:space-between;padding:0 20px 8px;flex-shrink:0;z-index:200}
+.sb-time{font-size:15px;font-weight:700}
+.sb-icons{display:flex;gap:5px;align-items:center}
+.sb-icons i{font-size:14px}
+#screens{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:#fff;will-change:transform;transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.screen.off-right{transform:translateX(100%)}
+.screen.off-left{transform:translateX(-100%)}
+.scroller{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scroller::-webkit-scrollbar{display:none}
+.topnav{display:flex;align-items:center;padding:10px 16px;gap:8px;flex-shrink:0;border-bottom:.5px solid var(--g200);background:#fff}
+.topnav-title{font-size:17px;font-weight:700;flex:1;text-align:center}
+.nav-ico{width:36px;height:36px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0;transition:background .15s}
+.nav-ico:active{background:var(--g200)}
+.nav-ico i{font-size:19px;color:var(--g700)}
+#tabbar{height:calc(56px + var(--safe-bot));background:#fff;border-top:.5px solid var(--g200);display:flex;align-items:flex-start;padding-top:6px;flex-shrink:0;z-index:200}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:2px 0;border:none;background:transparent;transition:transform .1s}
+.tb:active{transform:scale(.88)}
+.tb i{font-size:23px;color:var(--g400);transition:color .15s}
+.tb span{font-size:9.5px;color:var(--g400);font-weight:500;transition:color .15s}
+.tb.act i,.tb.act span{color:var(--blue)}
+.btn-blue{background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:filter .15s,transform .12s;box-shadow:0 4px 14px rgba(26,143,227,.3)}
+.btn-blue:active{filter:brightness(.92);transform:scale(.97)}
+.btn-ghost{background:#fff;border:1.5px solid var(--g200);color:var(--g700);border-radius:100px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.btn-ghost:active{background:var(--g100)}
+.bdg{font-size:9.5px;padding:2px 7px;border-radius:6px;font-weight:700}
+.bdg-g{background:var(--green-light);color:#065F46}
+.bdg-o{background:var(--orange-light);color:#92400E}
+.bdg-r{background:var(--red-light);color:#991B1B}
+.bdg-p{background:var(--purple-light);color:var(--purple)}
+.bdg-b{background:var(--blue-light);color:var(--blue-d)}
+.chip{font-size:10px;padding:3px 9px;border-radius:7px;background:var(--g100);color:var(--g500);border:.5px solid var(--g200)}
+/* HOME */
+#home-header{padding:10px 16px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.brand-name{font-size:24px;font-weight:900;color:var(--blue);letter-spacing:-.5px;line-height:1}
+.brand-sub{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--g400);margin-top:1px}
+.header-btns{display:flex;gap:8px}
+.flash-bar{margin:2px 16px 10px;background:linear-gradient(135deg,#1A8FE3,#0EA5E9 55%,#38BDF8);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;flex-shrink:0}
+.flash-bar:active{filter:brightness(.94)}
+.flash-ic{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.flash-ic i{font-size:20px;color:#FFD700}
+.flash-text h3{font-size:14px;font-weight:700;color:#fff}
+.flash-text p{font-size:10.5px;color:rgba(255,255,255,.8);margin-top:1px}
+#map{flex-shrink:0;height:240px;position:relative;z-index:0}
+.leaflet-container{font-family:'Noto Sans SC',sans-serif}
+.map-fab{position:absolute;z-index:1000;width:38px;height:38px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.12);cursor:pointer;border:none;transition:background .15s}
+.map-fab:active{background:var(--g100)}
+.map-fab i{font-size:18px;color:var(--g700)}
+#fab-locate{bottom:10px;right:12px}
+#fab-locate i{color:var(--blue)}
+#fab-filter{bottom:10px;right:58px}
+.sort-bar{display:flex;gap:7px;padding:8px 16px;border-bottom:.5px solid var(--g200);flex-shrink:0;overflow-x:auto}
+.sort-bar::-webkit-scrollbar{display:none}
+.sort-chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--g200);background:#fff;cursor:pointer;white-space:nowrap;transition:all .15s;color:var(--g700);flex-shrink:0}
+.sort-chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.sort-chip:active{transform:scale(.95)}
+.need-bar{display:none;align-items:center;gap:8px;margin:0 16px 8px;padding:9px 12px;border-radius:12px;background:var(--blue-light);color:var(--blue-d);font-size:12px;font-weight:700}
+.need-bar.show{display:flex}
+.need-bar span{flex:1}
+.need-bar button{border:none;background:#fff;color:var(--blue);font:inherit;font-size:11px;font-weight:700;border-radius:999px;padding:4px 9px;cursor:pointer}
+.t-item{padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:.5px solid var(--g100);cursor:pointer;transition:background .1s}
+.t-item:active{background:var(--g50)}
+.t-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-avatar i{font-size:22px;color:#fff}
+.ic-g{background:var(--green)}.ic-o{background:var(--orange)}.ic-r{background:var(--red)}
+.t-info{flex:1;min-width:0}
+.t-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.t-sub{font-size:10.5px;color:var(--g500);margin-top:2px}
+.t-tags{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:9.5px;color:var(--g500);background:var(--g100);padding:1px 6px;border-radius:4px}
+.t-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.t-dist{font-size:11px;color:var(--g400);font-weight:500}
+.nav-mini{width:30px;height:30px;background:var(--blue-light);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:background .15s}
+.nav-mini:active{background:var(--blue-mid)}
+.nav-mini i{font-size:15px;color:var(--blue)}
+/* DETAIL */
+.d-hero{padding:16px 20px 14px;flex-shrink:0}
+.d-hero-row{display:flex;align-items:flex-start;gap:14px}
+.d-avatar{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.d-avatar i{font-size:28px;color:#fff}
+.d-meta{flex:1}
+.d-name{font-size:18px;font-weight:700;line-height:1.2}
+.d-open{font-size:11.5px;color:var(--green);margin-top:4px;display:flex;align-items:center;gap:5px;font-weight:500}
+.d-open::before{content:'';width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.d-rating-row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.d-score{font-size:26px;font-weight:700}
+.d-stars{color:var(--orange);font-size:14px;letter-spacing:1px}
+.d-cnt{font-size:12px;color:var(--g400)}
+.d-chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.section{padding:14px 20px;background:#fff;flex-shrink:0}
+.sec-sep{border-top:6px solid var(--g50)}
+.sec-h{font-size:14px;font-weight:700;margin-bottom:12px}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-row .sec-h{margin-bottom:0}
+.sec-link{font-size:11px;color:var(--blue);font-weight:500;cursor:pointer}
+.fac-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fac{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.fac-ic{width:46px;height:46px;background:var(--g50);border-radius:12px;display:flex;align-items:center;justify-content:center;border:.5px solid var(--g200);transition:background .15s,transform .1s}
+.fac:active .fac-ic{background:var(--blue-light);transform:scale(.92)}
+.fac-ic i{font-size:22px;color:var(--blue)}
+.fac-lb{font-size:9.5px;color:var(--g500);text-align:center}
+.fac .fac-ic{position:relative}
+.fac-check{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff!important;font-size:12px!important;display:none;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 3px 8px rgba(18,183,106,.28)}
+.fac.on .fac-ic{background:var(--green-light);border-color:#86EFAC}
+.fac.on .fac-check{display:flex}
+.fac.on .fac-lb{color:#065F46;font-weight:700}
+.rt-card{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--green-light);border-radius:12px;border:1px solid #A7F3D0}
+.rt-card.orange{background:var(--orange-light);border-color:#FCD34D}
+.rt-card.red{background:var(--red-light);border-color:#FCA5A5}
+.rt-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#065F46}
+.rt-card.orange .rt-status{color:#92400E}
+.rt-card.red .rt-status{color:#991B1B}
+.rt-dot{width:9px;height:9px;border-radius:50%;background:var(--green);animation:blink 1.8s infinite;flex-shrink:0}
+.rt-card.orange .rt-dot{background:var(--orange)}
+.rt-card.red .rt-dot{background:var(--red)}
+.rt-update{font-size:10px;color:#059669;cursor:pointer}
+.rt-btns{display:flex;gap:8px;margin-top:10px}
+.rt-btn{flex:1;height:36px;border-radius:18px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;border:1.5px solid}
+.rt-btn.green{border-color:var(--green);color:var(--green);background:#fff}
+.rt-btn.orange{border-color:var(--orange);color:var(--orange);background:#fff}
+.rt-btn.red{border-color:var(--red);color:var(--red);background:#fff}
+.rt-btn.green:active{background:var(--green-light)}
+.rt-btn.orange:active{background:var(--orange-light)}
+.rt-btn.red:active{background:var(--red-light)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-lb{font-size:11px;color:var(--g500);width:40px}
+.bar-track{flex:1;height:6px;background:var(--g100);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#34D399);border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.bar-val{font-size:11px;font-weight:600;width:24px;text-align:right}
+.rv-item{padding:12px 0;border-bottom:.5px solid var(--g100)}
+.rv-item:last-child{border-bottom:none}
+.rv-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rv-ava{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.rv-name{font-size:12px;font-weight:600}
+.rv-lv{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--purple-light);color:var(--purple);font-weight:700}
+.rv-time{font-size:10px;color:var(--g400);margin-left:auto}
+.rv-stars{color:var(--orange);font-size:13px;margin-bottom:3px}
+.rv-text{font-size:12px;color:var(--g700);line-height:1.6}
+.d-bar{padding:12px 20px;background:#fff;border-top:.5px solid var(--g200);display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:calc(12px + var(--safe-bot))}
+.d-bar-ic{width:42px;height:42px;border:1.5px solid var(--g200);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;flex-shrink:0;transition:background .15s}
+.d-bar-ic:active{background:var(--g100)}
+.d-bar-ic i{font-size:18px;color:var(--g700)}
+/* COMMUNITY */
+.c-header{padding:10px 16px 0;flex-shrink:0;border-bottom:.5px solid var(--g200)}
+.c-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.c-title{font-size:21px;font-weight:900}
+.post-btn{background:var(--blue);color:#fff;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;cursor:pointer;border:none;font-family:inherit;transition:filter .15s}
+.post-btn:active{filter:brightness(.9)}
+.tabs{display:flex}
+.tab{padding:8px 14px;font-size:12.5px;color:var(--g400);border-bottom:2.5px solid transparent;cursor:pointer;font-weight:500;white-space:nowrap;transition:all .15s}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+.cta-strip{display:flex;gap:8px;padding:10px 16px;background:var(--g50);flex-shrink:0}
+.cta-card{flex:1;border-radius:12px;padding:10px 8px 8px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border:1px solid var(--g200);transition:transform .15s}
+.cta-card:active{transform:scale(.96)}
+.cta-o{background:#FFF7ED;border-color:#FED7AA}
+.cta-g{background:var(--green-light);border-color:#A7F3D0}
+.cta-b{background:var(--blue-light);border-color:var(--blue-mid)}
+.cta-label{font-size:11.5px;font-weight:700}
+.cta-sub{font-size:9.5px;color:var(--g400);margin-top:1px}
+.cta-btn{margin-top:6px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;width:fit-content;border:none;cursor:pointer;font-family:inherit}
+.cta-btn-o{background:#F97316;color:#fff}
+.cta-btn-g{background:var(--green);color:#fff}
+.cta-btn-b{background:var(--blue);color:#fff}
+.feed-list{padding:10px 16px;display:flex;flex-direction:column;gap:10px}
+.post-card{background:#fff;border-radius:14px;padding:14px;border:.5px solid var(--g200);cursor:pointer;transition:box-shadow .15s}
+.post-card:active{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.post-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.p-ava{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.p-name{font-size:12.5px;font-weight:600}
+.p-lv{font-size:9px;padding:1px 5px;background:var(--purple-light);color:var(--purple);border-radius:4px;font-weight:700}
+.p-time{font-size:10px;color:var(--g400);margin-left:auto}
+.p-status-badge{font-size:9.5px;padding:2px 7px;border-radius:5px;font-weight:700;margin-left:4px}
+.post-body{font-size:12.5px;color:var(--g700);line-height:1.6}
+.post-imgs{display:flex;gap:6px;margin-top:8px}
+.post-img{flex:1;height:58px;border-radius:8px;overflow:hidden}
+.post-foot{display:flex;align-items:center;margin-top:10px;padding-top:8px;border-top:.5px solid var(--g100)}
+.p-loc{display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--g400);flex:1;overflow:hidden}
+.p-loc i{font-size:12px;flex-shrink:0}
+.p-loc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-acts{display:flex;gap:12px}
+.p-act{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--g400);cursor:pointer;border:none;background:transparent;font-family:inherit;padding:0;transition:color .15s}
+.p-act i{font-size:14px}
+.p-act.liked{color:var(--blue)}
+/* SEARCH */
+.srch-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:.5px solid var(--g200);flex-shrink:0}
+.srch-wrap{flex:1;position:relative;display:flex;align-items:center}
+.srch-wrap i{position:absolute;left:11px;font-size:16px;color:var(--g400);pointer-events:none}
+.srch-input{width:100%;height:38px;background:var(--g100);border:none;border-radius:19px;padding:0 14px 0 36px;font-size:14px;font-family:inherit;outline:none;color:var(--text);transition:background .15s}
+.srch-input:focus{background:var(--g200)}
+.srch-cancel{font-size:13px;color:var(--blue);font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.srch-sec{padding:14px 16px 8px;flex-shrink:0}
+.srch-sec-title{font-size:12px;font-weight:700;color:var(--g500);margin-bottom:10px}
+.hot-tags{display:flex;gap:7px;flex-wrap:wrap}
+.hot-tag{padding:6px 14px;border-radius:20px;font-size:12px;background:var(--g100);color:var(--g700);cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.hot-tag:active{background:var(--blue-light);color:var(--blue)}
+.srch-result{padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:.5px solid var(--g100);cursor:pointer;transition:background .1s}
+.srch-result:active{background:var(--g50)}
+.srch-r-ic{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.srch-r-ic i{font-size:20px;color:#fff}
+.srch-r-info{flex:1}
+.srch-r-name{font-size:13px;font-weight:600}
+.srch-r-addr{font-size:11px;color:var(--g400);margin-top:2px}
+/* HELP */
+.sos-btn{margin:14px 16px;background:linear-gradient(135deg,#EF4444,#F87171);border-radius:16px;padding:18px 20px;cursor:pointer;transition:filter .15s;box-shadow:0 6px 20px rgba(239,68,68,.28)}
+.sos-btn:active{filter:brightness(.93)}
+.sos-btn h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.sos-btn p{font-size:12px;color:rgba(255,255,255,.85);line-height:1.5}
+.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.help-opt{border-radius:14px;padding:16px;cursor:pointer;transition:transform .15s;border:.5px solid var(--g200)}
+.help-opt:active{transform:scale(.96)}
+.help-opt .h-ico{font-size:28px;margin-bottom:8px;display:block}
+.help-opt h4{font-size:13px;font-weight:700}
+.help-opt p{font-size:10.5px;color:var(--g500);margin-top:3px;line-height:1.5}
+.backup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.backup-opt{border:1px solid var(--g200);background:var(--g50);border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:all .15s}
+.backup-opt:active{transform:scale(.96);background:var(--blue-light)}
+.backup-opt i{display:block;font-size:20px;color:var(--blue);margin-bottom:4px}
+.backup-opt span{font-size:11px;font-weight:700;color:var(--g700)}
+.aux-card{margin:14px 16px;background:#fff;border-radius:14px;border:.5px solid var(--g200);padding:16px}
+.aux-card h4{font-size:14px;font-weight:700;margin-bottom:8px}
+.aux-card p{font-size:12px;color:var(--g500);line-height:1.7;margin-bottom:12px}
+/* PROFILE */
+.profile-hero{padding:28px 20px 20px;background:linear-gradient(160deg,#1A8FE3,#0EA5E9 50%,#38BDF8);flex-shrink:0}
+.p-ava-big{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;margin-bottom:12px;border:3px solid rgba(255,255,255,.45)}
+.p-hero-name{font-size:20px;font-weight:700;color:#fff}
+.p-hero-sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:4px;display:flex;align-items:center;gap:7px}
+.p-lv-badge{background:rgba(255,255,255,.22);padding:2px 9px;border-radius:6px;font-size:10px;font-weight:700;color:#fff}
+.p-stats{display:flex;background:rgba(255,255,255,.14);border-radius:12px;margin-top:16px;overflow:hidden}
+.p-stat{flex:1;text-align:center;padding:10px 0;cursor:pointer;transition:background .15s}
+.p-stat:hover{background:rgba(255,255,255,.1)}
+.p-stat+.p-stat{border-left:1px solid rgba(255,255,255,.2)}
+.p-stat-n{font-size:18px;font-weight:700;color:#fff}
+.p-stat-l{font-size:10px;color:rgba(255,255,255,.7)}
+.badges-strip{padding:14px 20px 8px;border-bottom:.5px solid var(--g100)}
+.badges-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.badges-title{font-size:13px;font-weight:700;color:var(--g500)}
+.badges-hint{font-size:10px;color:var(--g400)}
+.badges-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
+.badges-row::-webkit-scrollbar{display:none}
+.badge-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;cursor:pointer;scroll-snap-align:start}
+.badge-ic{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;position:relative;transition:transform .15s,filter .15s,box-shadow .15s;border:1px solid rgba(255,255,255,.75);box-shadow:0 8px 18px rgba(15,23,42,.06)}
+.badge-item:active .badge-ic{transform:scale(.92)}
+.badge-ic::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.65)}
+.badge-n{font-size:10px;font-weight:600;color:var(--g600);text-align:center;max-width:64px;line-height:1.2}
+.badge-sub{font-size:9px;color:var(--g400);line-height:1.2;text-align:center;max-width:64px}
+.badge-item.locked{opacity:.68}
+.badge-item.locked .badge-ic{background:linear-gradient(180deg,#F8FAFC,#E2E8F0) !important;filter:grayscale(1) saturate(.25)}
+.badge-item.locked .badge-n,.badge-item.locked .badge-sub{color:var(--g400)}
+.badge-lock{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid var(--g200);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(15,23,42,.12)}
+.badge-lock i{font-size:10px;color:var(--g500)}
+.badge-item.unlocked .badge-ic{box-shadow:0 10px 22px rgba(15,23,42,.08)}
+.badge-item.unlocked:hover .badge-ic{transform:translateY(-1px)}
+.badge-item.unlocked .badge-sub{color:var(--blue)}
+.avatar-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.avatar-choice{height:42px;border-radius:12px;border:1px solid var(--g200);background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;cursor:pointer;transition:all .15s}
+.avatar-choice.on{border-color:var(--blue);background:var(--blue-light);box-shadow:0 0 0 2px rgba(26,143,227,.12)}
+.p-ava-big{cursor:pointer;position:relative}
+.p-ava-big::after{content:'换';position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:#fff;color:var(--blue);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(15,23,42,.18)}
+.menu-section{padding:6px 0;border-top:6px solid var(--g50)}
+.menu-item{padding:14px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .1s}
+.menu-item:active{background:var(--g50)}
+.menu-item i.lead{font-size:20px;color:var(--blue);flex-shrink:0}
+.menu-item .m-label{flex:1;font-size:14px;font-weight:500}
+.menu-item .m-sub{font-size:11px;color:var(--g400)}
+.menu-item i.arr{font-size:16px;color:var(--g300)}
+/* MODALS */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal-sheet{background:#fff;border-radius:24px 24px 0 0;padding:20px 20px calc(20px + var(--safe-bot));width:100%;max-width:430px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:90vh;overflow-y:auto}
+.modal-sheet::-webkit-scrollbar{display:none}
+.modal-bg.open .modal-sheet{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;background:var(--g200);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-size:16px;font-weight:700;text-align:center;margin-bottom:16px;position:relative}
+.modal-x{position:absolute;right:0;top:-2px;width:28px;height:28px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:14px;color:var(--g500)}
+.f-section{margin-bottom:16px}
+.f-sec-title{font-size:11px;color:var(--g500);font-weight:700;margin-bottom:8px;letter-spacing:.4px;text-transform:uppercase}
+.f-chips{display:flex;gap:7px;flex-wrap:wrap}
+.f-chip{padding:6px 14px;border-radius:20px;font-size:12px;border:1.5px solid var(--g200);background:#fff;cursor:pointer;transition:all .15s;color:var(--g700);font-weight:500}
+.f-chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.f-chip:active{transform:scale(.95)}
+.form-field{margin-bottom:14px}
+.form-label{font-size:12px;color:var(--g500);font-weight:600;margin-bottom:6px}
+.form-input{width:100%;height:42px;border:1.5px solid var(--g200);border-radius:10px;padding:0 12px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;color:var(--text);background:#fff}
+.form-input:focus{border-color:var(--blue)}
+.form-input.big{font-size:20px;letter-spacing:3px}
+.form-textarea{width:100%;border:1.5px solid var(--g200);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;resize:none;min-height:90px;color:var(--text);background:#fff;transition:border-color .15s;line-height:1.6}
+.form-textarea:focus{border-color:var(--blue)}
+/* TOAST */
+#toast{position:fixed;bottom:calc(72px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,23,42,.88);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap;z-index:9999;backdrop-filter:blur(10px);max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* LOADING */
+#loading{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+#loading.gone{opacity:0;pointer-events:none}
+.ld-logo{font-size:36px;font-weight:900;color:var(--blue);letter-spacing:-.5px;margin-bottom:6px}
+.ld-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--g400);margin-bottom:14px}
+.ld-line{max-width:310px;padding:0 24px;margin-bottom:24px;font-size:13px;line-height:1.7;color:var(--g500);text-align:center}
+.ld-spin{width:32px;height:32px;border:3px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* MAP PINS */
+.m-pin{display:flex;flex-direction:column;align-items:center;cursor:pointer}
+.m-bubble{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .15s}
+.m-bubble:hover{transform:scale(1.1)}
+.m-tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;margin-top:-1px}
+.m-g .m-bubble{background:var(--green)}.m-g .m-tail{border-top:8px solid var(--green)}
+.m-o .m-bubble{background:var(--orange)}.m-o .m-tail{border-top:8px solid var(--orange)}
+.m-r .m-bubble{background:var(--red)}.m-r .m-tail{border-top:8px solid var(--red)}
+</style>
+</head>
+<body>
+<div id="loading"><div class="ld-logo">急先锋</div><div class="ld-sub">FlushFinder</div><div class="ld-line">绝望也许来自于一件小事，比如屎到临头找了半天的厕所不开放。</div><div class="ld-spin"></div></div>
+
+<div id="app">
+  <div id="statusbar">
+    <span class="sb-time" id="sb-time">9:41</span>
+    <div class="sb-icons"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></div>
+  </div>
+  <div id="screens">
+
+    <!-- HOME -->
+    <div class="screen" id="s-home">
+      <div id="home-header">
+        <div><div class="brand-name">急先锋</div><div class="brand-sub">FlushFinder</div></div>
+        <div class="header-btns">
+          <button class="nav-ico" onclick="goTo('s-search')"><i class="ti ti-search"></i></button>
+          <button class="nav-ico" onclick="toast('暂无新通知 🔔')"><i class="ti ti-bell"></i></button>
+        </div>
+      </div>
+      <div class="flash-bar" onclick="locateMe()">
+        <div class="flash-ic"><i class="ti ti-bolt"></i></div>
+        <div class="flash-text"><h3 id="flash-count">正在定位附近厕所...</h3><p id="flash-sub">点击重新定位</p></div>
+        <i class="ti ti-chevron-right" style="color:rgba(255,255,255,.7);margin-left:auto"></i>
+      </div>
+      <div id="map"></div>
+      <button class="map-fab" id="fab-locate" onclick="locateMe()"><i class="ti ti-current-location"></i></button>
+      <button class="map-fab" id="fab-filter" onclick="openModal('modal-filter')"><i class="ti ti-adjustments-horizontal"></i></button>
+      <div class="sort-bar">
+        <div class="sort-chip on" onclick="sortBy(this,'dist')">📍 距离</div>
+        <div class="sort-chip" onclick="sortBy(this,'score')">⭐ 评分</div>
+        <div class="sort-chip" onclick="sortBy(this,'free')">💰 免费</div>
+        <div class="sort-chip" onclick="sortBy(this,'h24')">🕐 24小时</div>
+        <div class="sort-chip" onclick="sortBy(this,'access')">♿ 无障碍</div>
+        <div class="sort-chip" onclick="sortBy(this,'baby')">🍼 母婴室</div>
+      </div>
+      <div class="need-bar" id="need-bar"><span id="need-bar-txt"></span><button onclick="clearNeedFilter()">清除筛选</button></div>
+      <div class="scroller"><div id="toilet-list"></div></div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="screen off-right" id="s-detail">
+  <div class="topnav">
+        <button class="nav-ico" onclick="goBack()"><i class="ti ti-chevron-left"></i></button>
+        <span class="topnav-title" id="d-topnav">厕所详情</span>
+        <button class="nav-ico" onclick="shareToilet()"><i class="ti ti-share"></i></button>
+        <button class="nav-ico" onclick="openModal('modal-report')"><i class="ti ti-dots"></i></button>
+      </div>
+      <div class="scroller">
+        <div class="d-hero">
+          <div class="d-hero-row">
+            <div class="d-avatar ic-g" id="d-avatar"><i class="ti ti-toilet-paper"></i></div>
+            <div class="d-meta">
+              <div class="d-name" id="d-name">人民公园公厕</div>
+              <div class="d-open" id="d-open-status">开放中 · 免费</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;color:var(--g400);margin-bottom:4px" id="d-dist-lbl">120m</div>
+              <button class="nav-ico" style="background:var(--blue-light);margin-left:auto" onclick="navigateTo()"><i class="ti ti-navigation" style="color:var(--blue)"></i></button>
+            </div>
+          </div>
+          <div class="d-rating-row">
+            <span class="d-score" id="d-score">4.6</span>
+            <span class="d-stars">★★★★★</span>
+            <span class="d-cnt" id="d-cnt">（128条评价）</span>
+          </div>
+          <div class="d-chips" id="d-chips"></div>
+          <div id="d-coord" style="display:none;font-size:10.5px;color:var(--g400);margin-top:8px;align-items:center;gap:4px;cursor:pointer" onclick="copyCoord()"></div>
+        </div>
+        <div class="section sec-sep"><div class="sec-h">设施与服务</div><div class="fac-grid" id="d-facs"></div></div>
+        <div class="section sec-sep">
+          <div class="sec-h">实时情况</div>
+          <div id="d-rt-card" class="rt-card">
+            <div class="rt-status"><span class="rt-dot"></span><span id="d-rt-txt">一路畅通</span></div>
+            <div class="rt-update" id="d-rt-time" onclick="reportStatus('smooth')">10分钟前更新</div>
+          </div>
+          <div class="rt-btns">
+            <button class="rt-btn green" onclick="reportStatus('smooth')">✅ 畅通</button>
+            <button class="rt-btn orange" onclick="reportStatus('queue')">⏳ 排队中</button>
+            <button class="rt-btn red" onclick="reportStatus('crowd')">🚶 大排长龙</button>
+          </div>
+        </div>
+        <div class="section sec-sep">
+          <div class="sec-h">综合评分</div>
+          <div style="display:flex;gap:18px;align-items:flex-start">
+            <div style="text-align:center;flex-shrink:0">
+              <div style="font-size:38px;font-weight:700" id="d-big-score">4.6</div>
+              <div style="color:var(--orange);font-size:16px">★★★★★</div>
+            </div>
+            <div class="bars" style="flex:1">
+              <div class="bar-row"><span class="bar-lb">干净度</span><div class="bar-track"><div class="bar-fill" id="bar-c" style="width:0"></div></div><span class="bar-val" id="bv-c">4.6</span></div>
+              <div class="bar-row"><span class="bar-lb">无异味</span><div class="bar-track"><div class="bar-fill" id="bar-s" style="width:0"></div></div><span class="bar-val" id="bv-s">4.5</span></div>
+              <div class="bar-row"><span class="bar-lb">设施</span><div class="bar-track"><div class="bar-fill" id="bar-f" style="width:0"></div></div><span class="bar-val" id="bv-f">4.3</span></div>
+              <div class="bar-row"><span class="bar-lb">排队</span><div class="bar-track"><div class="bar-fill" id="bar-q" style="width:0"></div></div><span class="bar-val" id="bv-q">4.7</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="section sec-sep">
+          <div class="sec-row"><span class="sec-h">用户评价</span><span class="sec-link" onclick="toast('查看全部评价')">查看全部 ›</span></div>
+          <div id="d-reviews"></div>
+          <div style="text-align:center;padding:10px 0">
+            <button class="btn-ghost" style="height:38px;padding:0 20px;margin:0 auto" onclick="openModal('modal-review')">✍️ 写评价 · 获得10积分</button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+      </div>
+      <div class="d-bar">
+        <div class="d-bar-ic" onclick="shareToilet()"><i class="ti ti-share"></i></div>
+        <button class="btn-blue" style="flex:1;height:48px" onclick="navigateTo()">
+          <i class="ti ti-navigation"></i><span id="d-nav-lbl">导航去这里</span>
+        </button>
+        <div class="d-bar-ic" onclick="openModal('modal-report')"><i class="ti ti-alert-triangle"></i></div>
+      </div>
+    </div>
+
+    <!-- COMMUNITY -->
+    <div class="screen off-right" id="s-community">
+      <div class="c-header">
+        <div class="c-title-row">
+          <span class="c-title">社区</span>
+          <button class="post-btn" onclick="openModal('modal-post')"><i class="ti ti-plus"></i>发布</button>
+        </div>
+        <div class="tabs" id="c-tabs">
+          <div class="tab on" onclick="switchCTab(this,0)">广场</div>
+          <div class="tab" onclick="switchCTab(this,1)">补给反馈</div>
+          <div class="tab" onclick="switchCTab(this,2)">最新动态</div>
+        </div>
+      </div>
+      <div class="cta-strip">
+        <div class="cta-card cta-o" onclick="openModal('modal-rpt-status')"><div class="cta-label">排队报时</div><div class="cta-sub">帮助他人!</div><button class="cta-btn cta-btn-o">去报时</button></div>
+        <div class="cta-card cta-g" onclick="openModal('modal-supply')"><div class="cta-label">补给反馈</div><div class="cta-sub">纸巾、洗手液、烘干机</div><button class="cta-btn cta-btn-g">去反馈</button></div>
+        <div class="cta-card cta-b" onclick="openModal('modal-review')"><div class="cta-label">评价避雷</div><div class="cta-sub">帮助他人!</div><button class="cta-btn cta-btn-b">去评价</button></div>
+      </div>
+      <div class="scroller"><div class="feed-list" id="feed-list"></div></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="screen off-right" id="s-search">
+      <div class="srch-bar">
+        <div class="srch-wrap">
+          <i class="ti ti-search"></i>
+          <input class="srch-input" id="srch-input" placeholder="搜索厕所名称或地址" oninput="doSearch(this.value)" autocomplete="off">
+        </div>
+        <span class="srch-cancel" onclick="goBack()">取消</span>
+      </div>
+      <div class="srch-sec">
+        <div class="srch-sec-title">热门搜索</div>
+        <div class="hot-tags">
+          <button class="hot-tag" onclick="setSearch('麦当劳')">麦当劳</button>
+          <button class="hot-tag" onclick="setSearch('地铁站')">地铁站</button>
+          <button class="hot-tag" onclick="setSearch('商场')">商场</button>
+          <button class="hot-tag" onclick="setSearch('公园')">公园</button>
+          <button class="hot-tag" onclick="setSearch('无障碍')">无障碍</button>
+          <button class="hot-tag" onclick="setSearch('母婴室')">母婴室</button>
+          <button class="hot-tag" onclick="setSearch('24小时')">24小时</button>
+          <button class="hot-tag" onclick="setSearch('加油站')">加油站</button>
+        </div>
+      </div>
+      <div class="srch-sec" style="padding-bottom:4px"><div class="srch-sec-title" id="srch-lbl">附近厕所</div></div>
+      <div class="scroller" id="srch-results"></div>
+    </div>
+
+    <!-- HELP -->
+    <div class="screen off-right" id="s-help">
+      <div class="topnav"><div style="width:36px"></div><span class="topnav-title">紧急求助</span><button class="nav-ico" onclick="toast('设置')"><i class="ti ti-settings"></i></button></div>
+      <div class="scroller">
+        <div class="sos-btn" onclick="sosNavigate()"><h3>⚡ 闪电求厕 · 一键直达</h3><p id="sos-txt">正在定位最近厕所...</p></div>
+        <div class="help-grid">
+          <div class="help-opt" style="background:#EFF6FF" onclick="filterAndGo('access')"><i class="ti ti-accessible h-ico" style="color:var(--blue)"></i><h4>无障碍厕所</h4><p>专为行动不便人士推荐路线</p></div>
+          <div class="help-opt" style="background:#F0FDF4" onclick="filterAndGo('baby')"><i class="ti ti-baby-carriage h-ico" style="color:var(--green)"></i><h4>母婴室</h4><p>含尿布台，适合带婴幼儿</p></div>
+          <div class="help-opt" style="background:#FFF7ED" onclick="filterAndGo('ibs')"><i class="ti ti-heart h-ico" style="color:var(--orange)"></i><h4>肠胃关怀</h4><p>IBS/克罗恩病专属路线</p></div>
+          <div class="help-opt" style="background:#F5F3FF" onclick="filterAndGo('third')"><i class="ti ti-gender-bigender h-ico" style="color:var(--purple)"></i><h4>第三卫生间</h4><p>无性别限制标识</p></div>
+        </div>
+        <div style="padding:10px 16px 0"><div class="srch-sec-title" style="margin-bottom:8px">备选方案</div><div class="backup-grid"><div class="backup-opt" onclick="filterAndGo('mcd')"><i class="ti ti-mood-smile"></i><span>麦当劳</span></div><div class="backup-opt" onclick="filterAndGo('netbar')"><i class="ti ti-device-desktop"></i><span>网吧</span></div><div class="backup-opt" onclick="filterAndGo('hotel')"><i class="ti ti-building"></i><span>酒店大堂</span></div><div class="backup-opt" onclick="filterAndGo('gas')"><i class="ti ti-gas-station"></i><span>加油站</span></div><div class="backup-opt" onclick="filterAndGo('mall')"><i class="ti ti-building-store"></i><span>商场</span></div><div class="backup-opt" onclick="filterAndGo('cafe')"><i class="ti ti-coffee"></i><span>咖啡店</span></div></div></div>
+        <div class="aux-card">
+          <h4>🎙️ 语音求助</h4>
+          <p>支持唤醒 Siri / 小艺：<br>"打开急先锋，我憋不住了！"<br>自动播报最近厕所路线。</p>
+          <button class="btn-blue" style="width:100%;height:44px" onclick="startVoice()"><i class="ti ti-microphone"></i>点击开启语音求助</button>
+        </div>
+        <div class="aux-card">
+          <h4>📍 添加新厕所</h4>
+          <p>发现地图未收录的厕所？帮助大家一起完善数据！</p>
+          <button class="btn-blue" style="width:100%;height:44px;background:var(--green);box-shadow:0 4px 14px rgba(18,183,106,.28)" onclick="openModal('modal-add')"><i class="ti ti-plus"></i>添加新厕所 · 获得20积分</button>
+        </div>
+        <div style="height:16px"></div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen off-right" id="s-profile">
+      <div class="scroller">
+        <div class="profile-hero">
+          <div class="p-ava-big" id="p-ava" onclick="openModal('modal-profile')">旅</div>
+          <div class="p-hero-name" id="p-name">旅行青蛙</div>
+          <div class="p-hero-sub"><span class="p-lv-badge" id="p-lv">LV.5 测纸官</span><span>已帮助 1,280 位用户</span></div>
+          <div class="p-stats">
+            <div class="p-stat" onclick="toast('我的积分：'+ST.pts+' 🏅')"><div class="p-stat-n" id="p-pts">2,350</div><div class="p-stat-l">积分</div></div>
+            <div class="p-stat" onclick="toast('我的贡献：47次 🗺️')"><div class="p-stat-n">47</div><div class="p-stat-l">贡献</div></div>
+            <div class="p-stat" onclick="toast('获得点赞：128 👍')"><div class="p-stat-n">128</div><div class="p-stat-l">获赞</div></div>
+          </div>
+        </div>
+        <div class="badges-strip">
+          <div class="badges-head">
+            <div class="badges-title">我的徽章</div>
+            <div class="badges-hint" id="badge-count">4/5 已解锁</div>
+          </div>
+          <div class="badges-row" id="badges-row">
+            <div class="badge-item unlocked" data-need="1" onclick="tapBadge(this,'测纸官：连续7天打卡评价 🧻')"><div class="badge-ic" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)">🧻</div><div class="badge-n">测纸官</div><div class="badge-sub">已解锁</div></div>
+            <div class="badge-item unlocked" data-need="3" onclick="tapBadge(this,'开荒先锋：添加了10个厕所 🗺️')"><div class="badge-ic" style="background:linear-gradient(135deg,#D1FADF,#86EFAC)">🗺️</div><div class="badge-n">开荒先锋</div><div class="badge-sub">已解锁</div></div>
+            <div class="badge-item unlocked" data-need="4" onclick="tapBadge(this,'救急大侠：帮助100人 ⚡')"><div class="badge-ic" style="background:linear-gradient(135deg,#E0F2FE,#BAE6FD)">⚡</div><div class="badge-n">救急大侠</div><div class="badge-sub">已解锁</div></div>
+            <div class="badge-item unlocked" data-need="5" onclick="tapBadge(this,'补给侦察员：反馈50次设施状态 🧴')"><div class="badge-ic" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE)">🧴</div><div class="badge-n">补给侦察员</div><div class="badge-sub">已解锁</div></div>
+            <div class="badge-item locked" data-need="8" onclick="tapBadge(this,'厕所所长需 LV.8 解锁 🔒')"><div class="badge-ic">👑<span class="badge-lock"><i class="ti ti-lock"></i></span></div><div class="badge-n">厕所所长</div><div class="badge-sub">LV.8 解锁</div></div>
+          </div>
+        </div>
+        <div class="menu-section">
+          <div class="menu-item" onclick="toast('我的评价：共23条 ⭐')"><i class="ti ti-star lead"></i><span class="m-label">我的评价</span><span class="m-sub">23条</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="toast('我的贡献：添加了12个厕所')"><i class="ti ti-map-pin lead"></i><span class="m-label">我的贡献</span><span class="m-sub">12个厕所</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="openModal('modal-supply')"><i class="ti ti-checklist lead"></i><span class="m-label">补给反馈</span><span class="m-sub">已反馈8次</span><i class="ti ti-chevron-right arr"></i></div>
+        </div>
+        <div class="menu-section">
+          <div class="menu-item" onclick="toast('积分兑换：可换纸巾、咖啡券 🎁')"><i class="ti ti-gift lead"></i><span class="m-label">积分兑换</span><span class="m-sub" style="color:var(--orange);font-weight:600" id="m-pts-sub">2,350分可用</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="toast('厕所订阅：已订阅5个厕所 🔔')"><i class="ti ti-bell lead"></i><span class="m-label">厕所订阅</span><span class="m-sub">5个</span><i class="ti ti-chevron-right arr"></i></div>
+        </div>
+        <div class="menu-section">
+          <div class="menu-item" onclick="openModal('modal-profile')"><i class="ti ti-user-edit lead"></i><span class="m-label">编辑资料</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="toast('设置')"><i class="ti ti-settings lead"></i><span class="m-label">设置</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="toast('帮助与反馈')"><i class="ti ti-help-circle lead"></i><span class="m-label">帮助与反馈</span><i class="ti ti-chevron-right arr"></i></div>
+          <div class="menu-item" onclick="openModal('modal-about')"><i class="ti ti-info-circle lead"></i><span class="m-label">关于急先锋</span><span class="m-sub">v1.0.0</span><i class="ti ti-chevron-right arr"></i></div>
+        </div>
+        <div style="height:16px"></div>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <div id="tabbar">
+    <button class="tb act" onclick="switchTab('s-home',this)"><i class="ti ti-map-2"></i><span>找厕所</span></button>
+    <button class="tb" onclick="switchTab('s-community',this)"><i class="ti ti-users"></i><span>社区</span></button>
+    <button class="tb" onclick="switchTab('s-help',this)"><i class="ti ti-help-circle"></i><span>求助</span></button>
+    <button class="tb" onclick="switchTab('s-profile',this)"><i class="ti ti-user"></i><span>我的</span></button>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="modal-filter" onclick="closeModal('modal-filter')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">筛选条件<button class="modal-x" onclick="closeModal('modal-filter')">✕</button></div>
+    <div class="f-section"><div class="f-sec-title">开放状态</div><div class="f-chips"><div class="f-chip on" onclick="this.classList.toggle('on')">开放中</div><div class="f-chip" onclick="this.classList.toggle('on')">24小时</div><div class="f-chip" onclick="this.classList.toggle('on')">免费</div><div class="f-chip" onclick="this.classList.toggle('on')">商场/店内</div></div></div>
+    <div class="f-section"><div class="f-sec-title">设施</div><div class="f-chips"><div class="f-chip" onclick="this.classList.toggle('on')">座便</div><div class="f-chip" onclick="this.classList.toggle('on')">有纸巾</div><div class="f-chip" onclick="this.classList.toggle('on')">洗手液</div><div class="f-chip" onclick="this.classList.toggle('on')">烘干机</div><div class="f-chip" onclick="this.classList.toggle('on')">充电插座</div><div class="f-chip" onclick="this.classList.toggle('on')">Wi-Fi</div></div></div>
+    <div class="f-section"><div class="f-sec-title">特殊需求</div><div class="f-chips"><div class="f-chip" onclick="this.classList.toggle('on')">♿ 无障碍</div><div class="f-chip" onclick="this.classList.toggle('on')">🍼 母婴室</div><div class="f-chip" onclick="this.classList.toggle('on')">⚧ 第三卫生间</div></div></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="applyFilter()">应用筛选</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-supply" onclick="closeModal('modal-supply')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">反馈补给状态<button class="modal-x" onclick="closeModal('modal-supply')">✕</button></div>
+    <div class="form-field"><div class="form-label">厕所名称</div><input class="form-input" id="supply-name" placeholder="如：国贸商场B1层公厕"></div>
+    <div class="form-field"><div class="form-label">补给情况</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">🧻 纸巾充足</div><div class="f-chip" onclick="selOne(this)">🧼 洗手液充足</div><div class="f-chip" onclick="selOne(this)">🌬️ 烘干机可用</div><div class="f-chip" onclick="selOne(this)">⚠️ 需要补货</div></div></div>
+    <div class="form-field"><div class="form-label">备注</div><input class="form-input" id="supply-note" placeholder="如：第三间没纸，洗手液正常"></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="submitSupply()">提交反馈 · 获得8积分 🏆</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-post" onclick="closeModal('modal-post')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">发布动态<button class="modal-x" onclick="closeModal('modal-post')">✕</button></div>
+    <div class="form-field"><div class="form-label">选择厕所</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">人民公园公厕</div><div class="f-chip" onclick="selOne(this)">国贸商城B1层</div><div class="f-chip" onclick="selOne(this)">星巴克中山路</div><div class="f-chip" onclick="selOne(this)">+ 其他</div></div></div>
+    <div class="form-field"><div class="form-label">内容</div><textarea class="form-textarea" id="post-content" placeholder="分享如厕体验、实时排队、纸巾洗手液等补给情况..."></textarea></div>
+    <div class="form-field"><div class="form-label">状态标签</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">✅ 一路畅通</div><div class="f-chip" onclick="selOne(this)">⏳ 排队中</div><div class="f-chip" onclick="selOne(this)">🚶 大排长龙</div><div class="f-chip" onclick="selOne(this)">🧻 补给反馈</div><div class="f-chip" onclick="selOne(this)">⭐ 评价</div></div></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="submitPost()">发布 · 获得10积分 🏆</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-review" onclick="closeModal('modal-review')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">写评价<button class="modal-x" onclick="closeModal('modal-review')">✕</button></div>
+    <div class="form-field"><div class="form-label">评分</div><div id="star-picker" style="display:flex;gap:8px;font-size:28px;cursor:pointer"><span onclick="pickStar(1)">☆</span><span onclick="pickStar(2)">☆</span><span onclick="pickStar(3)">☆</span><span onclick="pickStar(4)">☆</span><span onclick="pickStar(5)">☆</span></div></div>
+    <div class="form-field"><div class="form-label">评价内容</div><textarea class="form-textarea" id="rv-text" placeholder="描述干净度、设施、排队情况..."></textarea></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="submitReview()">提交评价 · 获得10积分 🏆</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-report" onclick="closeModal('modal-report')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">问题反馈<button class="modal-x" onclick="closeModal('modal-report')">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="f-chip" style="text-align:center" onclick="submitReport('信息有误')">🚫 该厕所信息有误</div>
+      <div class="f-chip" style="text-align:center" onclick="submitReport('已关闭')">🔴 该厕所已关闭</div>
+      <div class="f-chip" style="text-align:center" onclick="submitReport('环境差')">🧹 环境非常差</div>
+      <div class="f-chip" style="text-align:center" onclick="submitReport('位置有误')">📍 位置标记有误</div>
+      <div class="f-chip" style="text-align:center" onclick="submitReport('其他')">其他问题</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-rpt-status" onclick="closeModal('modal-rpt-status')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">选择厕所并报时<button class="modal-x" onclick="closeModal('modal-rpt-status')">✕</button></div>
+    <div class="form-field"><div class="form-label">选择厕所</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">人民公园公厕</div><div class="f-chip" onclick="selOne(this)">国贸商城B1层</div><div class="f-chip" onclick="selOne(this)">星巴克中山路</div></div></div>
+    <div class="form-field"><div class="form-label">当前状态</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">✅ 一路畅通</div><div class="f-chip" onclick="selOne(this)">⏳ 排队中</div><div class="f-chip" onclick="selOne(this)">🚶 大排长龙</div></div></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="submitRptStatus()">提交报时 · 获得5积分 ⚡</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-add" onclick="closeModal('modal-add')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">添加新厕所<button class="modal-x" onclick="closeModal('modal-add')">✕</button></div>
+    <div class="form-field"><div class="form-label">厕所名称</div><input class="form-input" id="add-name" placeholder="如：XX商场B2层公厕"></div>
+    <div class="form-field"><div class="form-label">地址</div><input class="form-input" id="add-addr" placeholder="详细地址（将使用当前位置）"></div>
+    <div class="form-field"><div class="form-label">类型</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">公共厕所</div><div class="f-chip" onclick="selOne(this)">商场</div><div class="f-chip" onclick="selOne(this)">餐厅/咖啡</div><div class="f-chip" onclick="selOne(this)">加油站</div><div class="f-chip" onclick="selOne(this)">酒店大堂</div></div></div>
+    <div class="form-field"><div class="form-label">使用条件</div><div class="f-chips"><div class="f-chip on" onclick="selOne(this)">✅ 免费</div><div class="f-chip" onclick="selOne(this)">💰 需消费</div><div class="f-chip" onclick="selOne(this)">🕒 限营业时间</div></div></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="submitAdd()">提交 · 获得20积分 🏆</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-profile" onclick="closeModal('modal-profile')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">编辑资料<button class="modal-x" onclick="closeModal('modal-profile')">✕</button></div>
+    <div class="form-field"><div class="form-label">头像</div><div class="avatar-picker" id="avatar-picker"><button class="avatar-choice on" onclick="pickAvatar(this,'旅')">旅</button><button class="avatar-choice" onclick="pickAvatar(this,'急')">急</button><button class="avatar-choice" onclick="pickAvatar(this,'洁')">洁</button><button class="avatar-choice" onclick="pickAvatar(this,'🚻')">🚻</button><button class="avatar-choice" onclick="pickAvatar(this,'🧻')">🧻</button><button class="avatar-choice" onclick="pickAvatar(this,'☕')">☕</button></div></div>
+    <div class="form-field"><div class="form-label">昵称</div><input class="form-input" id="edit-name" value="旅行青蛙"></div>
+    <div class="form-field"><div class="form-label">个性签名</div><input class="form-input" id="edit-bio" placeholder="介绍一下自己..."></div>
+    <button class="btn-blue" style="width:100%;height:48px;margin-top:8px" onclick="saveProfile()">保存修改</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-about" onclick="closeModal('modal-about')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">关于急先锋<button class="modal-x" onclick="closeModal('modal-about')">✕</button></div>
+    <div style="font-size:13px;line-height:1.8;color:var(--g700);display:flex;flex-direction:column;gap:10px">
+      <p><b>急先锋 / FlushFinder</b>，人生大事，储蓄“憋”着。</p>
+      <p>我们专注解决你在城市出行中遇到的“内急”困扰。无论是在陌生街头、商场迷宫，还是地铁站走廊，你都可以用急先锋迅速找到最近、最干净、最可靠的厕所。</p>
+      <div style="padding:12px;border-radius:12px;background:var(--g50);border:1px solid var(--g200)">
+        <div style="font-weight:700;margin-bottom:6px">核心特色</div>
+        <div>⚡ 闪电寻厕：打开 App，即刻显示方圆 500 米内的厕所，一键导航直达。</div>
+        <div>🚦 实时路况：绿灯畅通、黄灯需消费或条件限制、红灯维修中，一目了然。</div>
+        <div>🔍 透视眼标签：支持筛选纸巾、蹲/座便、无障碍通道、母婴室等需求。</div>
+        <div>🧼 厕所互助社区：用户评价、照片、设施反馈，让你告别踩雷。</div>
+      </div>
+      <div style="padding:12px;border-radius:12px;background:#EFF6FF;border:1px solid #BFDBFE">
+        <div style="font-weight:700;margin-bottom:6px">我们的承诺</div>
+        <div>不画大饼，只带你最近、最干净、最靠谱的洗手间。急先锋，懂你的燃眉之急，1 秒拯救你的肠胃焦虑。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── DATA ──
+var TOILETS=[
+  {id:1,name:'人民公园公厕',type:'公共厕所',st:'g',stTxt:'免费·开放',dist:120,score:4.6,rcnt:128,lat:0,lng:0,
+   open:'24小时',free:true,tags:['座便','有纸','洗手液','烘干机','无障碍','母婴台'],
+   chips:['公共厕所','24小时开放','免费'],rt:'smooth',rtTxt:'一路畅通',rtTime:'10分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'},
+         {ic:'ti-wind',lb:'烘干机'},{ic:'ti-accessible',lb:'无障碍'},{ic:'ti-plug',lb:'充电插座'},
+         {ic:'ti-baby-carriage',lb:'母婴台'},{ic:'ti-gender-bigender',lb:'第三卫生间'}],
+   bars:{c:4.6,s:4.5,f:4.3,q:4.7},
+   rvs:[{ava:'旅',bg:'#DBEAFE',fg:'#2563EB',name:'旅行青蛙',lv:'LV.5',time:'8分钟前',stars:5,text:'非常干净，纸巾充足，洗手液是满的，环境很好！'},
+        {ava:'行',bg:'#D1FADF',fg:'#059669',name:'行走中的鱼',lv:'LV.3',time:'2小时前',stars:4,text:'环境不错，下午3点人有点多，建议错开高峰。'}]},
+  {id:2,name:'星巴克（中山路店）',type:'咖啡厅',st:'o',stTxt:'需消费',dist:180,score:4.2,rcnt:56,lat:0,lng:0,
+   open:'07:00-22:00',free:false,tags:['座便','有纸','洗手液','Wi-Fi'],
+   chips:['商业厕所','需购买消费'],rt:'smooth',rtTxt:'一路畅通',rtTime:'30分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'},{ic:'ti-wifi',lb:'Wi-Fi'}],
+   bars:{c:4.2,s:4.0,f:4.1,q:4.5},
+   rvs:[{ava:'咖',bg:'#FEF3C7',fg:'#92400E',name:'咖啡控',lv:'LV.2',time:'1小时前',stars:4,text:'买一杯饮品即可，环境干净整洁。'}]},
+  {id:3,name:'中山广场公厕',type:'公共厕所',st:'r',stTxt:'维修中',dist:230,score:3.8,rcnt:32,lat:0,lng:0,
+   open:'维修中',free:true,tags:['座便','有纸'],
+   chips:['维修中','预计明天08:00恢复'],rt:'crowd',rtTxt:'暂时关闭',rtTime:'',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'}],
+   bars:{c:3.5,s:3.2,f:3.8,q:4.0},
+   rvs:[{ava:'匿',bg:'#F1F5F9',fg:'#64748B',name:'匿名用户',lv:'',time:'1天前',stars:3,text:'正在维修，预计明天恢复。'}]},
+  {id:4,name:'国贸商城B1层公厕',type:'商场',st:'g',stTxt:'免费·开放',dist:350,score:4.8,rcnt:203,lat:0,lng:0,
+   open:'10:00-22:00',free:true,tags:['座便','有纸','洗手液','烘干机','无障碍','第三卫生间'],
+   chips:['商场厕所','免费','精品级'],rt:'smooth',rtTxt:'一路畅通',rtTime:'5分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'},
+         {ic:'ti-wind',lb:'烘干机'},{ic:'ti-accessible',lb:'无障碍'},{ic:'ti-gender-bigender',lb:'第三卫生间'}],
+   bars:{c:4.9,s:4.8,f:4.7,q:4.6},
+   rvs:[{ava:'商',bg:'#DBEAFE',fg:'#2563EB',name:'商场常客',lv:'LV.6',time:'20分钟前',stars:5,text:'国贸厕所一流！非常干净，强烈推荐。'}]},
+  {id:5,name:'麦当劳（建国路店）',type:'快餐厅',st:'o',stTxt:'需消费',dist:480,score:3.9,rcnt:41,lat:0,lng:0,
+   open:'24小时',free:false,tags:['座便','有纸','洗手液'],
+   chips:['快餐厅','24小时','需购买'],rt:'queue',rtTxt:'排队中',rtTime:'15分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'}],
+   bars:{c:3.8,s:3.6,f:3.9,q:4.2},
+   rvs:[{ava:'汉',bg:'#FEF3C7',fg:'#92400E',name:'汉堡爱好者',lv:'LV.1',time:'3小时前',stars:4,text:'24小时营业，买个薯条就能用，深夜救命必备。'}]}
+  ,{id:6,name:'星云网吧（人民广场店）',type:'网吧',st:'o',stTxt:'需消费',dist:620,score:4.0,rcnt:29,lat:0,lng:0,
+   open:'24小时',free:false,tags:['座便','有纸巾','Wi-Fi','充电插座'],
+   chips:['网吧','24小时','可消费'],rt:'smooth',rtTxt:'一路畅通',rtTime:'20分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-wifi',lb:'Wi-Fi'},{ic:'ti-plug',lb:'充电插座'},{ic:'ti-droplet',lb:'有纸巾'}],
+   bars:{c:4.0,s:4.1,f:3.8,q:4.0},
+   rvs:[{ava:'网',bg:'#DBEAFE',fg:'#2563EB',name:'键盘侠',lv:'LV.2',time:'2小时前',stars:4,text:'前台能借厕所，环境还算干净，适合临时兜底。'}]},
+  {id:7,name:'凯悦酒店大堂卫生间',type:'酒店',st:'o',stTxt:'仅住客/大堂开放',dist:760,score:4.5,rcnt:18,lat:0,lng:0,
+   open:'06:00-24:00',free:false,tags:['座便','有纸巾','洗手液','烘干机','无障碍'],
+   chips:['酒店大堂','环境较好'],rt:'smooth',rtTxt:'一路畅通',rtTime:'35分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'},{ic:'ti-wind',lb:'烘干机'},{ic:'ti-accessible',lb:'无障碍'}],
+   bars:{c:4.5,s:4.4,f:4.6,q:4.1},
+   rvs:[{ava:'酒',bg:'#F1F5F9',fg:'#334155',name:'路过的人',lv:'LV.3',time:'1天前',stars:5,text:'大堂卫生间可以用，整体比较体面，适合应急。'}]},
+  {id:8,name:'中石化建国路加油站',type:'加油站',st:'o',stTxt:'需消费',dist:920,score:3.7,rcnt:22,lat:0,lng:0,
+   open:'24小时',free:false,tags:['座便','洗手液','有纸巾'],
+   chips:['加油站','24小时'],rt:'queue',rtTxt:'排队中',rtTime:'10分钟前',
+   facs:[{ic:'ti-toilet-paper',lb:'座便'},{ic:'ti-droplet',lb:'有纸巾'},{ic:'ti-wash',lb:'洗手液'}],
+   bars:{c:3.7,s:3.5,f:3.6,q:4.3},
+   rvs:[{ava:'加',bg:'#FEF3C7',fg:'#92400E',name:'赶路司机',lv:'LV.1',time:'4小时前',stars:3,text:'夜里能用，别要求太高，胜在随时开。'}]}
+];
+var FEED=[
+  {ava:'厕',bg:'#DBEAFE',fg:'#2563EB',name:'厕所所长',lv:'LV.8',st:'bdg-g',stTxt:'一路畅通',time:'15分钟前',
+   body:'国贸商场B1层，靠近扶梯处，干净整洁，纸巾充足。母婴室也很宽敞！',imgs:['#C8E6C9','#B3D9F5','#FEF3C7'],loc:'国贸商城B1层公厕',likes:35,cmnts:12,liked:false},
+  {ava:'测',bg:'#FEF3C7',fg:'#92400E',name:'测纸官小张',lv:'LV.6',st:'bdg-o',stTxt:'需要补货',time:'1小时前',
+   body:'⚠️ 星巴克（人民路店）女厕纸巾快没了，洗手液正常，建议带纸或先问店员。',imgs:[],loc:'星巴克（人民路店）',likes:24,cmnts:8,liked:false},
+  {ava:'🤷',bg:'#F1F5F9',fg:'#64748B',name:'匿名用户',lv:'',st:'bdg-r',stTxt:'排队中',time:'2小时前',
+   body:'地铁2号线人民广场站，女厕排队较长，约需等5-8分钟，男厕无需等待。',imgs:[],loc:'人民广场地铁站公厕',likes:18,cmnts:5,liked:false},
+  {ava:'麻',bg:'#EDE9FE',fg:'#6D28D9',name:'麻辣肚子君',lv:'LV.4',st:'',stTxt:'',time:'3小时前',
+   body:'推荐附近宜家餐厅厕所！免费、干净，还有充电插座，简直神仙如厕体验 🙌',imgs:['#D1FADF','#E0F2FE'],loc:'宜家家居（四季店）',likes:89,cmnts:32,liked:false}
+];
+// ── STATE ──
+var ST={cur:'s-home',hist:[],tab:'s-home',toilet:null,lat:null,lng:null,map:null,uMarker:null,accCircle:null,tMarkers:[],pts:2350,sortMode:'dist',star:0,helpFilter:null,watchId:null};
+// ── CLOCK ──
+function tick(){var d=new Date(),h=d.getHours(),m=d.getMinutes();document.getElementById('sb-time').textContent=h+':'+(m<10?'0':'')+m;}
+tick();setInterval(tick,15000);
+// ── TOAST ──
+var _tt;
+function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2400);}
+// ── NAVIGATION ──
+function goTo(id){
+  if(id===ST.cur)return;
+  document.getElementById(ST.cur).classList.add('off-left');
+  document.getElementById(id).classList.remove('off-right','off-left');
+  ST.hist.push(ST.cur);ST.cur=id;
+  if(id==='s-detail')setTimeout(animBars,200);
+}
+function goBack(){
+  if(!ST.hist.length){switchTab('s-home',document.querySelector('.tb'));return;}
+  var p=ST.hist.pop();
+  document.getElementById(ST.cur).classList.add('off-right');
+  document.getElementById(p).classList.remove('off-left','off-right');
+  ST.cur=p;
+}
+function switchTab(id,btn){
+  ST.hist=[];
+  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('off-left');s.id!==id?s.classList.add('off-right'):s.classList.remove('off-right');});
+  ST.cur=ST.tab=id;
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('act'));
+  document.querySelectorAll('.tb').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'"))b.classList.add('act');});
+}
+// ── MAP ──
+function initMap(lat,lng,accuracy){
+  if(!ST.map){
+    ST.map=L.map('map',{zoomControl:false,attributionControl:false}).setView([lat,lng],16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(ST.map);
+    // 用户位置标记（蓝点 + 精度圈）
+    var uIco=L.divIcon({html:'<div style="width:16px;height:16px;background:#1A8FE3;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(26,143,227,.25)"></div>',className:'',iconAnchor:[8,8]});
+    ST.uMarker=L.marker([lat,lng],{icon:uIco,zIndexOffset:1000}).addTo(ST.map);
+    if(accuracy&&accuracy<2000){
+      ST.accCircle=L.circle([lat,lng],{radius:accuracy,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
+    }
+  } else {
+    ST.map.setView([lat,lng],ST.map.getZoom());
+    if(ST.uMarker)ST.uMarker.setLatLng([lat,lng]);
+    if(ST.accCircle){ST.map.removeLayer(ST.accCircle);ST.accCircle=null;}
+    if(accuracy&&accuracy<2000){
+      ST.accCircle=L.circle([lat,lng],{radius:accuracy,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
+    }
+  }
+  renderToiletMarkers();
+  ST.map.invalidateSize();
+}
+function renderToiletMarkers(){
+  if(!ST.map)return;
+  ST.tMarkers.forEach(m=>ST.map.removeLayer(m));
+  ST.tMarkers=[];
+  TOILETS.forEach(function(t){
+    if(!t.lat||!t.lng)return;
+    var col=t.st==='g'?'#12B76A':t.st==='o'?'#F59E0B':'#EF4444';
+    var html='<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))">'+
+      '<div style="width:32px;height:32px;background:'+col+';border-radius:50%;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;transition:transform .15s">🚻</div>'+
+      '<div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid '+col+';margin-top:-1px"></div></div>';
+    var ico=L.divIcon({html:html,className:'',iconAnchor:[16,40]});
+    ST.tMarkers.push(L.marker([t.lat,t.lng],{icon:ico}).addTo(ST.map).on('click',()=>openDetail(t.id)));
+  });
+}
+function distBetween(lat1,lng1,lat2,lng2){
+  var dx=(lng2-lng1)*111320*Math.cos(lat1*Math.PI/180),dy=(lat2-lat1)*111320;
+  return Math.round(Math.sqrt(dx*dx+dy*dy));
+}
+function refreshDistances(lat,lng){
+  TOILETS.forEach(function(t){if(t.lat&&t.lng)t.dist=distBetween(lat,lng,t.lat,t.lng);});
+}
+function serviceToilet(el,idx,lat,lng){
+  var pLat=el.lat||(el.center&&el.center.lat),pLng=el.lon||(el.center&&el.center.lon),tags=el.tags||{};
+  var name=tags.name||tags['name:zh']||('附近公共厕所 '+(idx+1));
+  var fee=tags.fee==='yes',access=tags.wheelchair==='yes',baby=tags.changing_table==='yes';
+  var list=['座便'];if(tags.toilets_paper!=='no')list.push('有纸巾');if(access)list.push('无障碍');if(baby)list.push('母婴台');
+  return {id:10000+idx,name:name,type:'地图服务',st:'g',stTxt:fee?'可能收费':'免费·开放',dist:distBetween(lat,lng,pLat,pLng),score:4.2,rcnt:0,lat:pLat,lng:pLng,
+    open:tags.opening_hours||'以现场为准',free:!fee,tags:list,chips:['地图服务','公共厕所',fee?'可能收费':'免费'],rt:'smooth',rtTxt:'一路畅通',rtTime:'刚刚',
+    facs:list.map(function(lb){return {ic:lb==='无障碍'?'ti-accessible':lb==='母婴台'?'ti-baby-carriage':lb==='有纸巾'?'ti-droplet':'ti-toilet-paper',lb:lb};}),
+    bars:{c:4.2,s:4.1,f:4.0,q:4.3},rvs:[]};
+}
+function loadNearbyToilets(lat,lng){
+  // Overpass QL: 查询 1000m 内的 amenity=toilets
+  var q='[out:json][timeout:12];(node["amenity"="toilets"](around:1200,'+lat+','+lng+');way["amenity"="toilets"](around:1200,'+lat+','+lng+');relation["amenity"="toilets"](around:1200,'+lat+','+lng+'););out center tags 30;';
+  return fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)})
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var items=(data.elements||[]).filter(function(x){
+        var hasPos=(x.lat&&x.lon)||(x.center&&x.center.lat&&x.center.lon);
+        return hasPos;
+      });
+      if(!items.length){toast('地图服务暂无附近数据，已使用本地结果 📍');return false;}
+      var real=items.slice(0,30).map((el,i)=>serviceToilet(el,i,lat,lng));
+      // 合并：真实数据 + 保留 demo 数据（id<100）中未被覆盖的
+      TOILETS=real;
+      renderToiletMarkers();updateUI();
+      toast('已从地图服务加载 '+TOILETS.length+' 个真实厕所 📍');
+      return true;
+    })
+    .catch(function(e){
+      console.warn('Overpass error:',e);
+      toast('地图服务暂不可用，显示模拟数据');
+      return false;
+    });
+}
+function seedDemoToilets(lat,lng){
+  var off=[[-0.002,-0.003],[.0015,-.002],[.002,.002],[-.001,.003],[.003,-.001],[-.0025,.0025],[.0028,-.0026],[-.0032,.0012]];
+  TOILETS.forEach(function(t,i){t.lat=lat+(off[i]||[0,0])[0];t.lng=lng+(off[i]||[0,0])[1];});
+  refreshDistances(lat,lng);renderToiletMarkers();
+}
+function locateMe(){
+  if(!navigator.geolocation){toast('浏览器不支持定位');useFallback();return;}
+  toast('正在获取高精度位置 🛰️');
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      var lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;
+      ST.lat=lat;ST.lng=lng;
+      initMap(lat,lng,acc);
+      seedDemoToilets(lat,lng);
+      updateUI();
+      var accTxt=acc<30?'精度极高（±'+Math.round(acc)+'m）':acc<100?'精度良好（±'+Math.round(acc)+'m）':'精度一般（±'+Math.round(acc)+'m）';
+      toast('定位成功 · '+accTxt+'，正在加载真实厕所...');
+      loadNearbyToilets(lat,lng);
+      // 启动持续追踪（低频，省电）
+      if(ST.watchId)navigator.geolocation.clearWatch(ST.watchId);
+      ST.watchId=navigator.geolocation.watchPosition(function(p){
+        var la=p.coords.latitude,lo=p.coords.longitude,ac=p.coords.accuracy;
+        ST.lat=la;ST.lng=lo;
+        if(ST.uMarker)ST.uMarker.setLatLng([la,lo]);
+        if(ST.accCircle){ST.map.removeLayer(ST.accCircle);ST.accCircle=null;}
+        if(ac<2000&&ST.map)ST.accCircle=L.circle([la,lo],{radius:ac,color:'#1A8FE3',fillColor:'#1A8FE3',fillOpacity:0.08,weight:1.5,opacity:0.4}).addTo(ST.map);
+        refreshDistances(la,lo);renderList();
+      },{enableHighAccuracy:false,maximumAge:15000,timeout:20000});
+    },
+    function(err){
+      var msg={1:'位置权限被拒绝',2:'无法获取位置信号',3:'定位超时'}[err.code]||'定位失败';
+      toast(msg+'，使用演示数据');
+      useFallback();
+    },
+    {timeout:10000,enableHighAccuracy:true,maximumAge:5000}
+  );
+}
+function useFallback(){
+  var lat=39.9042,lng=116.4074;ST.lat=lat;ST.lng=lng;
+  initMap(lat,lng);seedDemoToilets(lat,lng);updateUI();toast('已使用演示数据（北京中心）');loadNearbyToilets(lat,lng);
+}
+function updateUI(){
+  var avail=TOILETS.filter(t=>t.st!=='r').length;
+  document.getElementById('flash-count').textContent='附近有 '+TOILETS.length+' 个厕所';
+  document.getElementById('flash-sub').textContent=avail+'个可用 · 点击刷新';
+  var nearest=TOILETS.slice().sort((a,b)=>a.dist-b.dist)[0];
+  document.getElementById('sos-txt').textContent='最近：'+nearest.name+' '+nearest.dist+'m · 点击导航';
+  renderList();renderSearch();
+}
+// ── LIST ──
+function sortBy(el,mode){
+  el.closest('.sort-bar').querySelectorAll('.sort-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');ST.sortMode=mode;renderList();
+  toast('已排序：'+el.textContent.replace(/[📍⭐💰🕐♿🍼]/g,'').trim());
+}
+function renderList(){
+  var list=[...TOILETS];
+  if(ST.helpFilter&&ST.helpFilter.fn)list=list.filter(ST.helpFilter.fn);
+  if(ST.sortMode==='score')list.sort((a,b)=>b.score-a.score);
+  else if(ST.sortMode==='dist')list.sort((a,b)=>a.dist-b.dist);
+  else if(ST.sortMode==='free')list=list.filter(t=>t.free).sort((a,b)=>a.dist-b.dist);
+  else if(ST.sortMode==='h24')list=list.filter(t=>t.open==='24小时').sort((a,b)=>a.dist-b.dist);
+  else if(ST.sortMode==='access')list=list.filter(t=>t.tags.includes('无障碍')).sort((a,b)=>a.dist-b.dist);
+  else if(ST.sortMode==='baby')list=list.filter(t=>t.tags.includes('母婴台')).sort((a,b)=>a.dist-b.dist);
+  document.getElementById('toilet-list').innerHTML=list.map(tItem).join('');
+  var bar=document.getElementById('need-bar'),txt=document.getElementById('need-bar-txt');
+  if(bar&&txt){bar.classList.toggle('show',!!ST.helpFilter);txt.textContent=ST.helpFilter?'当前需求：'+ST.helpFilter.label+' · '+list.length+' 个结果':'';}
+}
+function clearNeedFilter(){ST.helpFilter=null;renderList();toast('已清除求助筛选');}
+function distFmt(d){return d<1000?d+'m':(d/1000).toFixed(1)+'km';}
+function tItem(t){
+  var ic='ic-'+t.st,bdg='bdg-'+(t.st==='r'?'r':t.st==='o'?'o':'g');
+  var navB=t.st!=='r'?'<button class="nav-mini" onclick="event.stopPropagation();navT('+t.id+')"><i class="ti ti-navigation"></i></button>':'';
+  var stars='★'.repeat(Math.round(t.score))+'☆'.repeat(5-Math.round(t.score));
+  var tags=t.tags.slice(0,4).map(g=>'<span class="tag">'+g+'</span>').join('');
+  return '<div class="t-item" onclick="openDetail('+t.id+')"><div class="t-avatar '+ic+'"><i class="ti ti-toilet-paper"></i></div><div class="t-info"><div class="t-name">'+t.name+'<span class="bdg '+bdg+'">'+t.stTxt+'</span></div><div class="t-sub"><span style="color:var(--orange)">'+stars+'</span> '+t.score+'</div><div class="t-tags">'+tags+'</div></div><div class="t-right"><span class="t-dist">'+distFmt(t.dist)+'</span>'+navB+'</div></div>';
+}
+// ── DETAIL ──
+function openDetail(id){
+  var t=TOILETS.find(x=>x.id===id);if(!t)return;ST.toilet=t;
+  document.getElementById('d-topnav').textContent=t.name;
+  document.getElementById('d-name').textContent=t.name;
+  document.getElementById('d-avatar').className='d-avatar ic-'+(t.st==='g'?'g':t.st==='o'?'o':'r');
+  document.getElementById('d-open-status').textContent=t.open+' · '+t.stTxt;
+  document.getElementById('d-dist-lbl').textContent=distFmt(t.dist);
+  document.getElementById('d-score').textContent=t.score;
+  document.getElementById('d-big-score').textContent=t.score;
+  document.getElementById('d-cnt').textContent='（'+t.rcnt+'条评价）';
+  // 导航按钮：如有坐标显示距离，否则提示无坐标
+  var hasCoords=t.lat&&t.lng;
+  document.getElementById('d-nav-lbl').textContent=hasCoords?'导航去这里 · '+distFmt(t.dist):'暂无精确坐标';
+  document.querySelector('.d-bar .btn-blue').style.opacity=hasCoords?'1':'0.45';
+  document.getElementById('d-chips').innerHTML=t.chips.map(c=>'<span class="chip">'+c+'</span>').join('');
+  // 坐标显示
+  var coordEl=document.getElementById('d-coord');
+  if(coordEl){
+    if(hasCoords){var la=t.lat.toFixed(5),lo=t.lng.toFixed(5);coordEl.textContent='📍 '+la+', '+lo;coordEl.style.display='flex';}
+    else{coordEl.style.display='none';}
+  }
+  document.getElementById('d-facs').innerHTML=t.facs.map(f=>'<div class="fac" onclick="toggleFac(this,\''+f.lb+'\')"><div class="fac-ic"><i class="ti '+f.ic+'"></i><i class="ti ti-check fac-check"></i></div><div class="fac-lb">'+f.lb+'</div></div>').join('');
+  setRtCard(t.rt,t.rtTxt,t.rtTime);
+  ['c','s','f','q'].forEach(k=>document.getElementById('bar-'+k).style.width='0');
+  document.getElementById('bv-c').textContent=t.bars.c;document.getElementById('bv-s').textContent=t.bars.s;
+  document.getElementById('bv-f').textContent=t.bars.f;document.getElementById('bv-q').textContent=t.bars.q;
+  document.getElementById('d-reviews').innerHTML=t.rvs.map(rv=>{
+    var lvB=rv.lv?'<span class="rv-lv">'+rv.lv+'</span>':'';
+    var stars='★'.repeat(rv.stars)+'☆'.repeat(5-rv.stars);
+    return '<div class="rv-item"><div class="rv-head"><div class="rv-ava" style="background:'+rv.bg+';color:'+rv.fg+'">'+rv.ava+'</div><div><div style="display:flex;align-items:center;gap:5px"><span class="rv-name">'+rv.name+'</span>'+lvB+'</div></div><span class="rv-time">'+rv.time+'</span></div><div class="rv-stars">'+stars+'</div><div class="rv-text">'+rv.text+'</div></div>';
+  }).join('');
+  goTo('s-detail');
+}
+function animBars(){
+  var t=ST.toilet;if(!t)return;
+  document.getElementById('bar-c').style.width=(t.bars.c/5*100)+'%';
+  document.getElementById('bar-s').style.width=(t.bars.s/5*100)+'%';
+  document.getElementById('bar-f').style.width=(t.bars.f/5*100)+'%';
+  document.getElementById('bar-q').style.width=(t.bars.q/5*100)+'%';
+}
+function setRtCard(rt,txt,time){
+  var card=document.getElementById('d-rt-card');
+  card.className='rt-card'+(rt==='queue'?' orange':rt==='crowd'?' red':'');
+  document.getElementById('d-rt-txt').textContent=txt;
+  if(time)document.getElementById('d-rt-time').textContent=time+' · 点击更新';
+}
+function reportStatus(type){
+  var t=ST.toilet;if(!t)return;
+  var m={smooth:['smooth','一路畅通'],queue:['queue','排队中'],crowd:['crowd','大排长龙']};
+  var[rt,txt]=m[type];t.rt=rt;t.rtTxt=txt;t.rtTime='刚刚';setRtCard(rt,txt,'刚刚');
+  addPts(5);toast('已更新：'+txt+' ✅ +5积分');
+}
+function toggleFac(el,label){
+  el.classList.toggle('on');
+  toast(label+(el.classList.contains('on')?' 已确认':' 已取消'));
+}
+// ── NAVIGATE ──
+function navigateTo(){var t=ST.toilet;if(t)navT(t.id);}
+function navT(id){
+  var t=TOILETS.find(x=>x.id===id);if(!t)return;
+  ST.toilet=t;
+  // 优先使用厕所真实坐标，否则使用用户位置（不应该用用户坐标作为目标！）
+  var destLat=t.lat,destLng=t.lng;
+  if(!destLat||!destLng){toast('该厕所暂无精确坐标，无法导航 ❌');return;}
+  var ua=navigator.userAgent,url;
+  var name=encodeURIComponent(t.name);
+  if(/iPhone|iPad|iPod/i.test(ua)){
+    // Apple Maps 步行导航
+    url='maps://maps.apple.com/?daddr='+destLat+','+destLng+'&dirflg=w&t=m';
+  } else if(/Android/i.test(ua)){
+    // 优先尝试 geo: URI（支持高德/百度/谷歌地图选择），带查询名称
+    url='geo:'+destLat+','+destLng+'?q='+destLat+','+destLng+'('+name+')';
+  } else {
+    // 桌面浏览器 → Google Maps
+    url='https://www.google.com/maps/dir/?api=1&destination='+destLat+','+destLng+'&travelmode=walking&destination_place_name='+name;
+  }
+  window.open(url,'_blank');
+  toast('正在打开导航 🧭 → '+t.name);
+}
+function copyCoord(){var t=ST.toilet;if(!t||!t.lat)return;var s=t.lat.toFixed(6)+','+t.lng.toFixed(6);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>toast('坐标已复制 📋'));else toast(s);}
+function sosNavigate(){
+  var s=(ST.helpFilter&&ST.helpFilter.fn?[...TOILETS].filter(ST.helpFilter.fn):[...TOILETS]).filter(t=>t.st!=='r'&&t.lat&&t.lng).sort((a,b)=>a.dist-b.dist);
+  if(s.length)navT(s[0].id);else toast('未找到可导航的厕所（缺少坐标）');
+}
+// ── SHARE ──
+function shareToilet(){
+  var t=ST.toilet,txt=t?t.name+' · 评分'+t.score+' · '+distFmt(t.dist)+'\n急先锋FlushFinder为你找到了这个厕所！':'急先锋FlushFinder - 城市找厕所神器';
+  if(navigator.share)navigator.share({title:'急先锋',text:txt,url:window.location.href}).catch(()=>{});
+  else if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast('信息已复制到剪贴板 📋'));
+  else toast('链接已复制 📋');
+}
+// ── COMMUNITY ──
+function switchCTab(el,idx){document.querySelectorAll('#c-tabs .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderFeed(idx);}
+function renderFeed(idx){
+  var data=FEED;
+  if(idx===1)data=FEED.filter(f=>f.stTxt==='需要补货'||f.body.includes('纸巾')||f.body.includes('洗手液')||f.body.includes('烘干机'));
+  else if(idx===2)data=[...FEED].sort(()=>Math.random()-.5);
+  document.getElementById('feed-list').innerHTML=data.map((f,i)=>feedCard(f,i)).join('');
+}
+function feedCard(f,i){
+  var lvB=f.lv?'<span class="p-lv">'+f.lv+'</span>':'';
+  var stB=f.stTxt?'<span class="bdg '+f.st+' p-status-badge">'+f.stTxt+'</span>':'';
+  var imgs=f.imgs.map(c=>'<div class="post-img"><div style="background:'+c+';height:100%"></div></div>').join('');
+  var imgRow=imgs?'<div class="post-imgs">'+imgs+'</div>':'';
+  return '<div class="post-card"><div class="post-head"><div class="p-ava" style="background:'+f.bg+';color:'+f.fg+'">'+f.ava+'</div><div><div style="display:flex;align-items:center;gap:5px"><span class="p-name">'+f.name+'</span>'+lvB+'</div></div>'+stB+'<span class="p-time">'+f.time+'</span></div><div class="post-body">'+f.body+'</div>'+imgRow+'<div class="post-foot"><div class="p-loc"><i class="ti ti-map-pin"></i><span>'+f.loc+'</span></div><div class="p-acts"><button class="p-act" onclick="toast(\'回复功能即将上线 💬\')"><i class="ti ti-message-circle"></i>'+f.cmnts+'</button><button class="p-act'+(f.liked?' liked':'') +'" id="lbtn-'+i+'" onclick="likePost('+i+',this)"><i class="ti ti-thumb-up"></i><span id="lc-'+i+'">'+f.likes+'</span></button></div></div></div>';
+}
+function likePost(i,btn){FEED[i].liked=!FEED[i].liked;FEED[i].likes+=FEED[i].liked?1:-1;btn.classList.toggle('liked',FEED[i].liked);document.getElementById('lc-'+i).textContent=FEED[i].likes;if(FEED[i].liked){addPts(1);toast('已点赞 👍 +1积分');}}
+// ── SEARCH ──
+function doSearch(q){
+  var res=q?TOILETS.filter(t=>t.name.includes(q)||t.type.includes(q)||t.tags.some(g=>g.includes(q))):TOILETS;
+  document.getElementById('srch-lbl').textContent=q?'搜索结果 ('+res.length+'个)':'附近厕所';
+  document.getElementById('srch-results').innerHTML=res.map(t=>{
+    var ic='ic-'+(t.st==='g'?'g':t.st==='o'?'o':'r');
+    return '<div class="srch-result" onclick="goBack();setTimeout(()=>openDetail('+t.id+'),360)"><div class="srch-r-ic '+ic+'"><i class="ti ti-toilet-paper"></i></div><div class="srch-r-info"><div class="srch-r-name">'+t.name+'</div><div class="srch-r-addr">'+t.type+' · '+t.stTxt+'</div></div><span style="font-size:11px;color:var(--g400)">'+distFmt(t.dist)+'</span></div>';
+  }).join('');
+}
+function setSearch(q){document.getElementById('srch-input').value=q;doSearch(q);}
+function renderSearch(){doSearch('');}
+// ── HELP ──
+function filterAndGo(type){
+  var lb={access:'无障碍厕所',baby:'母婴室',ibs:'肠胃关怀路线',third:'第三卫生间',mcd:'麦当劳',netbar:'网吧',hotel:'酒店大堂',gas:'加油站',mall:'商场',cafe:'咖啡店'}[type];
+  var fn={
+    access:t=>t.tags.includes('无障碍'),
+    baby:t=>t.tags.includes('母婴台'),
+    ibs:t=>t.st!=='r'&&t.tags.some(g=>g.includes('纸巾')||g.includes('洗手液')),
+    third:t=>t.tags.some(g=>g.includes('第三')),
+    mcd:t=>t.name.includes('麦当劳')||t.type.includes('快餐'),
+    netbar:t=>t.type.includes('网吧')||t.name.includes('网吧'),
+    hotel:t=>t.type.includes('酒店')||t.name.includes('酒店'),
+    gas:t=>t.type.includes('加油站')||t.name.includes('加油站'),
+    mall:t=>t.type.includes('商场')||t.name.includes('商场'),
+    cafe:t=>t.type.includes('咖啡')||t.name.includes('星巴克')||t.name.includes('咖啡')
+  };
+  var f=fn[type]||(() =>true),res=TOILETS.filter(f);
+  ST.helpFilter={type:type,label:lb,fn:f};
+  ST.sortMode='dist';
+  renderList();
+  switchTab('s-home',document.querySelector('.tb'));
+  toast('已按'+lb+'筛选：'+res.length+'个可查看');
+}
+function startVoice(){
+  if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+    var Rec=window.SpeechRecognition||window.webkitSpeechRecognition,r=new Rec();
+    r.lang='zh-CN';r.start();
+    r.onresult=e=>{var txt=e.results[0][0].transcript;toast('识别到：'+txt);if(txt.includes('厕所')||txt.includes('洗手间')||txt.includes('憋'))sosNavigate();};
+    r.onerror=()=>toast('语音识别失败，请检查麦克风权限');
+    toast('请说：我要找厕所 🎙️');
+  }else{toast('您的浏览器不支持语音识别');}
+}
+// ── MODALS ──
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function selOne(el){el.closest('.f-chips,.toilet-pick').querySelectorAll('.f-chip,.toilet-pick-item').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+function applyFilter(){var active=[...document.querySelectorAll('#modal-filter .f-chip.on')].map(c=>c.textContent);closeModal('modal-filter');toast('筛选已应用：'+(active.join('、')||'全部'));}
+function submitSupply(){
+  var n=document.getElementById('supply-name').value.trim(),note=document.getElementById('supply-note').value.trim();
+  if(!n){toast('请填写厕所名称');return;}
+  closeModal('modal-supply');addPts(8);toast('补给反馈已提交！+8积分 🏆');
+  FEED.unshift({ava:'我',bg:'#DBEAFE',fg:'#2563EB',name:'旅行青蛙',lv:'LV.5',st:'bdg-o',stTxt:'需要补货',time:'刚刚',body:'🧻 '+n+'：'+(note||'纸巾/洗手液情况正常，请现场确认。'),imgs:[],loc:n,likes:0,cmnts:0,liked:false});
+  renderFeed(1);
+}
+function submitPost(){
+  var c=document.getElementById('post-content').value.trim();if(!c){toast('请填写内容');return;}
+  closeModal('modal-post');addPts(10);toast('发布成功！+10积分 🏆');document.getElementById('post-content').value='';
+  FEED.unshift({ava:'我',bg:'#DBEAFE',fg:'#2563EB',name:'旅行青蛙',lv:'LV.5',st:'bdg-g',stTxt:'一路畅通',time:'刚刚',body:c,imgs:[],loc:'当前位置',likes:0,cmnts:0,liked:false});
+  renderFeed(0);
+}
+function submitRptStatus(){closeModal('modal-rpt-status');addPts(5);toast('报时成功！+5积分 ⚡');}
+function submitReport(reason){closeModal('modal-report');toast('反馈已提交（'+reason+'），感谢！✅');}
+function submitAdd(){var n=document.getElementById('add-name').value.trim();if(!n){toast('请填写厕所名称');return;}closeModal('modal-add');addPts(20);toast('新厕所已提交审核！+20积分 🏆');}
+function saveProfile(){
+  var n=document.getElementById('edit-name').value.trim();
+  if(n){document.getElementById('p-name').textContent=n;}
+  closeModal('modal-profile');toast('资料已保存 ✅');
+}
+function pickAvatar(btn,val){
+  document.querySelectorAll('#avatar-picker .avatar-choice').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('p-ava').textContent=val;
+}
+function levelFromPts(pts){
+  return Math.max(1,Math.min(10,Math.floor((pts||0)/300)+1));
+}
+function refreshProfileMeta(){
+  var lv=levelFromPts(ST.pts);
+  var pLv=document.getElementById('p-lv');
+  if(pLv)pLv.textContent='LV.'+lv+' 测纸官';
+  var badgeCountEl=document.getElementById('badge-count');
+  var badges=[].slice.call(document.querySelectorAll('#badges-row .badge-item'));
+  var unlocked=0;
+  badges.forEach(function(b){
+    var need=parseInt(b.getAttribute('data-need')||'1',10);
+    var isUnlocked=lv>=need;
+    b.classList.toggle('locked',!isUnlocked);
+    b.classList.toggle('unlocked',isUnlocked);
+    var sub=b.querySelector('.badge-sub');
+    if(sub)sub.textContent=isUnlocked?'已解锁':'LV.'+need+' 解锁';
+    if(isUnlocked)unlocked++;
+  });
+  if(badgeCountEl)badgeCountEl.textContent=unlocked+'/'+badges.length+' 已解锁';
+}
+function pickStar(n){
+  ST.star=n;document.querySelectorAll('#star-picker span').forEach((s,i)=>{s.textContent=i<n?'★':'☆';s.style.color=i<n?'var(--orange)':'var(--g300)';});
+}
+function submitReview(){
+  var txt=document.getElementById('rv-text').value.trim();if(!ST.star){toast('请先评分');return;}if(!txt){toast('请填写评价内容');return;}
+  closeModal('modal-review');addPts(10);toast('评价已提交！+10积分 🏆');document.getElementById('rv-text').value='';
+  if(ST.toilet){ST.toilet.rcnt++;ST.toilet.rvs.unshift({ava:'旅',bg:'#DBEAFE',fg:'#2563EB',name:'旅行青蛙',lv:'LV.5',time:'刚刚',stars:ST.star,text:txt});openDetail(ST.toilet.id);}
+  ST.star=0;document.querySelectorAll('#star-picker span').forEach(s=>{s.textContent='☆';s.style.color='';});
+}
+// ── POINTS ──
+function addPts(n){ST.pts+=n;document.getElementById('p-pts').textContent=ST.pts.toLocaleString();if(document.getElementById('m-pts-sub'))document.getElementById('m-pts-sub').textContent=ST.pts.toLocaleString()+'分可用';refreshProfileMeta();}
+// ── INIT ──
+window.addEventListener('load',function(){
+  renderList();renderFeed(0);renderSearch();refreshProfileMeta();
+  setTimeout(function(){document.getElementById('loading').classList.add('gone');locateMe();},900);
+});
+function tapBadge(el,msg){if(el.classList.contains('locked'))toast('未解锁，达到 '+el.getAttribute('data-need')+' 级后可用');else toast(msg);}
+document.addEventListener('touchmove',function(e){if(!e.target.closest('.scroller')&&!e.target.closest('#map')&&!e.target.closest('.modal-sheet'))e.preventDefault();},{passive:false});
+</script>
+</body>
+</html>
